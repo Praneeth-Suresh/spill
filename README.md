@@ -1,5 +1,17 @@
 # Spill
 
+## Development
+
+Development and production builds run differently, as defined in `server/_core/index.ts`.During development, vite is used.
+
+To allow the development build to run, set:
+
+```plaintext
+NODE_ENV=development
+```
+
+in `.env`.
+
 ## Repository Structure
 
 Here is the role played by the directories in this project:
@@ -13,7 +25,7 @@ Here is the role played by the directories in this project:
 The runtime deduces the part of the codebase required for each segment of the application using the configuration files:
 
 - `tsconfig` for typescript configuration. In this project, TypeScript only checks types, doesn't compile (Vite and esbuild handle compilation).
--
+- `drizzle.config.ts` to configure drizzle so that it can access the right database using the appropriate credentials.
 
 ## Database design
 
