@@ -104,9 +104,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
-/**
- * Get user by Manus OAuth openId.
- */
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {

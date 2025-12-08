@@ -22,10 +22,59 @@ This module creates tRPC context for each request. This runs before every tRPC p
 
 ## `_core/index.ts`
 
-This defines behaviour when the server is started. The server uses the Express 4 Node.js web framework.
+This defines behaviour when the **express** server is started. The server uses the Express 4 Node.js web framework.
 
 A separate OAuth enpoint is used because OAuth callbacks use query parameters and redirects, which don't fit the tRPC RPC model. Keeping it as a standard Express route simplifies the implementation.
 
 ## `_core/vite.ts`
 
 This provides the method to run the vite server which is used in development.
+
+## `_core/oauth.ts`
+
+Here is the flow of OAuth2:
+
+1. When the user clicks log in, they are redirected to the OAuth portal. This is where they authenticate.
+2. OAuth portal redirects back to `/api/oauth/callback?code=...`
+3. Then the server gets the access token, using which it fetches user info
+4. Server creates/updates user in database
+5. Server generates JWT (JSON Web Token) and sets session cookie
+
+Once this is done, the user is redirected to the page.
+
+> A JWT is used to securely transmit information between parties as a JSON object.
+
+The file `oauth.ts` defines the OAuth Handler.
+
+## `_core/sdk.ts`
+
+This file provides an SDK for authenticating users via OAuth, managing session tokens with JWTs, and synchronizing user info with a local database.
+
+## `_core/cookies.ts`
+
+The role of this script is to manage cookie creation. Here are key configurations used here:
+
+- HttpOnly cookies cannot be accessed by JavaScript, preventing XSS attacks from stealing session tokens. This is critical for security.
+- SameSite: "none" allows the cookie to be sent with the OAuth cross-site requests. This requires secure: true (HTTPS).
+- In development (HTTP), secure cookies don't work. But in production (HTTPS), secure cookies are required for security
+
+## `routers.ts`
+
+This defines question endpoints.
+
+Note that file upload has a separate endpoint. File uploads happen before form submission (so users see upload progress). The upload returns a fileId, which is then included in the form submission.
+
+When behind a reverse proxy (like Railway, Nginx, or Cloudflare), `req.socket.remoteAddress` is the proxy's IP, not the user's. The `x-forwarded-for` header contains the original client IP.
+
+## `branching.ts`
+
+This defines the key branching logic. A branching logic allows a series of questions to be created. It also allows a redirect to a fresh question page once the question is answered.
+
+Here is the branching algorithms:
+
+1. Load all active branching rules for the question (sorted by priority)
+2. For each rule, check if condition matches
+3. Return first matching rule's destination
+4. If no rules match, return question's default nextQuestionId
+
+Multiple rules might match the same response. Priority ensures deterministic behavior - the rule with the lowest priority number wins. This allows complex logic like "if option A, go to Q5; if option B, go to Q6; otherwise go to Q7".
