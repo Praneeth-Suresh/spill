@@ -55,7 +55,7 @@ pnpm db:push
 
 This generates SQL migration files in `drizzle/migrations/`, and applies them to the database. This manages the process of working with tables without needing to write SQL.
 
-### Testing
+### Seeding Data
 
 For the purposes of testing the application, we are going to use seed data. This means that we don't need to manually write in content to the database before testing the application.
 
@@ -66,3 +66,21 @@ pnpm exec tsx scripts/seed-db.ts
 ```
 
 If this runs successfully, you should get the message `✅ Seeding complete`.
+
+## Running Tests
+
+This is how to run the test suite:
+
+```bash
+pnpm test
+```
+
+## Deployment
+
+To set up environment variables, follow the documentation for required environment variables in `.env.example`.
+
+### Docker
+
+A multi-stage build is used. This reduces the final image size by excluding development dependencies and build tools. The builder stage compiles the code, and the production stage only includes the compiled output and runtime dependencies.
+
+Alpine Linux is chosen because Alpine is a minimal Linux distribution (5MB vs 100MB+ for Ubuntu), resulting in smaller Docker images and faster deployments.
