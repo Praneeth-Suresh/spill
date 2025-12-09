@@ -1,0 +1,132 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+/**
+ * HomePage displays the generic feedback form (home question).
+ * This is the default landing page where users can submit general comments.
+ * Questions can redirect here after submission based on their settings.
+ */
+export default function HomePage() {
+  const [, setLocation] = useLocation();
+  const [feedback, setFeedback] = useState("");
+
+  // Home question is typically ID 1 (created in seed data)
+  const { data: questionData } = trpc.questions.getById.useQuery({ id: 1 });
+
+  const submitMutation = trpc.questions.submit.useMutation({
+    onSuccess: () => {
+      toast.success("Thank you for your feedback!");
+      setFeedback("");
+    },
+    onError: (error) => {
+      toast.error(`Failed to submit: ${error.message}`);
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!feedback.trim()) {
+      toast.error("Please enter your feedback");
+      return;
+    }
+
+    if (!questionData) {
+      toast.error("Question not available");
+      return;
+    }
+
+    submitMutation.mutate({
+      questionId: questionData.question.id,
+      facilityId: questionData.question.facilityId,
+      answers: [{ textAnswer: feedback.trim() }],
+    });
+  };
+
+  return (
+    <div className="spill-mobile-card">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-bold">spill.</h1>
+      </div>
+
+      {/* Feedback Card */}
+      <div className="spill-card">
+        <h2 className="text-xl font-bold mb-4">Share your feedback</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Tell us about your experience or report any issues
+        </p>
+
+        <Textarea
+          placeholder="Type your feedback here..."
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          className="spill-input-box min-h-[150px] mb-6"
+        />
+
+        <Button
+          onClick={handleSubmit}
+          disabled={submitMutation.isPending}
+          className="spill-button w-full"
+        >
+          {submitMutation.isPending ? (
+            <>
+              <Loader2 className="animate-spin mr-2 h-4 w-4" />
+              Submitting...
+            </>
+          ) : (
+            "spill now."
+          )}
+        </Button>
+      </div>
+
+      {/* Quick Links */}
+      <div className="mt-6 space-y-3">
+        <div className="spill-card">
+          <h3 className="font-semibold mb-3">Quick Feedback</h3>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => setLocation("/question/2")}
+            >
+              🎬 Vote for next movie
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => setLocation("/question/3")}
+            >
+              🔧 Report equipment issue
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => setLocation("/question/4")}
+            >
+              🎨 Suggest activities
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="mt-6 spill-card">
+        <div className="flex items-start gap-2">
+          <div className="text-lg">⚠️</div>
+          <div>
+            <h3 className="font-semibold mb-1">Disclaimer</h3>
+            <p className="spill-disclaimer">
+              This platform is for anonymous feedback. Your identity is protected and will not be shared. 
+              However, we log IP addresses for security, analytics, and troubleshooting purposes. 
+              The information you provide will be used to improve our facilities and services.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

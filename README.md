@@ -10,7 +10,7 @@ To allow the development build to run, set:
 NODE_ENV=development
 ```
 
-in `.env`.
+in `.env`. Otherwise, set it to `production`.
 
 ## Repository Structure
 
@@ -27,6 +27,7 @@ The runtime deduces the part of the codebase required for each segment of the ap
 - `tsconfig` for typescript configuration. In this project, TypeScript only checks types, doesn't compile (Vite and esbuild handle compilation).
 - `drizzle.config.ts` to configure drizzle so that it can access the right database using the appropriate credentials.
 - `vite.config.ts` as vite configuration. In development, Vite runs on port 3000 (frontend) and Express runs on port 3001 (backend). The proxy forwards /api requests to the backend, avoiding CORS issues.
+- `vitest.config.ts` configures vitest which handles comprehensive tests for the application.
 
 ## Database design
 

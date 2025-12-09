@@ -29,3 +29,18 @@ This defines the question page. Note that the disclaimer is presented as a secti
 A key design feature is flexibility of question style. Each question type has different data requirements (poll: option IDs, text: string, file: file ID). Keeping them separate makes validation and submission logic clearer.
 
 The application uses toast notification. Toast notifications provide non-intrusive feedback for success and error states without blocking the UI or requiring user interaction to dismiss.
+
+## `src/pages/AdminDashboard.tsx`
+
+This is the main Admin Dashboard page. It handles authentication to ensure that only the admins are able to access this page.
+
+## `src/hooks`
+
+The files in the hooks folder provide custom React hooks that encapsulate reusable logic for handling user input, device detection, and event management in the application.
+
+## `src/lib`
+
+The files in the lib folder provide utility functions and libraries that support the frontend React application:
+
+- `trpc.ts`: Sets up type-safe tRPC React hooks for communicating with the backend API. It allows frontend components to easily call backend procedures (like [trpc.auth.me.useQuery()](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html)) with full TypeScript type inference, ensuring type safety and reducing boilerplate.
+- `utils.ts`: Exports a utility function [cn](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) that combines and merges CSS class names using [clsx](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) and `tailwind-merge`. This helps manage dynamic and conditional Tailwind CSS class names in a clean and conflict-free way.
