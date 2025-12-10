@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
+// Ensure environment variables are loaded
+import 'dotenv/config';
 
 type CookieCall = {
   name: string;

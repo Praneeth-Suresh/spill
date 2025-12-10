@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { evaluateNextQuestion, createBranchingRule, updateQuestionSequence } from "./branching";
+// Ensure environment variables are loaded
+import 'dotenv/config';
 
 /**
  * Question Logic and Branching Test Suite

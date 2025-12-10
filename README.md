@@ -12,6 +12,20 @@ NODE_ENV=development
 
 in `.env`. Otherwise, set it to `production`.
 
+To run the development server, use:
+
+```bash
+pnpm dev
+```
+
+This will:
+
+- Start the Express server on post 3000
+- Start Vite dev server with HMR (Hot Module Replacement)
+- Watch for file changes and auto-reload
+
+Note that `cross-env` is used to ensure that the application can process envrionment variables correctly when using Windows.
+
 ## Repository Structure
 
 Here is the role played by the directories in this project:
@@ -65,7 +79,14 @@ First, populate the information into `scripts/seed-db.ts` then run this seed scr
 pnpm exec tsx scripts/seed-db.ts
 ```
 
-If this runs successfully, you should get the message `✅ Seeding complete`.
+If this runs successfully, you should get the message `✅ Seeding complete`. Note that this command cannot be run multiple times because once data is already inserted, making any changes using the `INSERT` command will produce a duplicate entry error.
+
+Note that Drizzle does not automatically create tables on seed. For this you need to run migrations. So, if you need to create tables again because the database changed, then run these commands:
+
+```bash
+pnpm exec drizzle-kit generate
+pnpm exec drizzle-kit push
+```
 
 ## Running Tests
 
@@ -74,6 +95,8 @@ This is how to run the test suite:
 ```bash
 pnpm test
 ```
+
+Ensure your tests use a separate test database to avoid polluting production data.
 
 ## Deployment
 
@@ -84,3 +107,9 @@ To set up environment variables, follow the documentation for required environme
 A multi-stage build is used. This reduces the final image size by excluding development dependencies and build tools. The builder stage compiles the code, and the production stage only includes the compiled output and runtime dependencies.
 
 Alpine Linux is chosen because Alpine is a minimal Linux distribution (5MB vs 100MB+ for Ubuntu), resulting in smaller Docker images and faster deployments.
+
+## Taking this project forward
+
+Here are some of the things that are planned in the pipeline for this project.
+
+I am looking at implementing real-time updates with WebSocket connections, adding email notifications for critical issues, implementing rate limiting to prevent abuse, adding more analytics visualizations and creating a mobile app with React Native.
