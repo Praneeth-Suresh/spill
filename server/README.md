@@ -48,7 +48,7 @@ The file `oauth.ts` defines the OAuth Handler.
 
 ## `_core/sdk.ts`
 
-This file provides an SDK for authenticating users via OAuth, managing session tokens with JWTs, and synchronizing user info with a local database.
+This file provides an SDK for authenticating users via OAuth, managing session tokens with JWTs, and synchronizing user info with a local database. The OAuth provider we are working with now is Google, through whom we are going to get users to login.
 
 ## `_core/cookies.ts`
 

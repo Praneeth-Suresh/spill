@@ -29,7 +29,7 @@ function createAuthContext(role: 'user' | 'admin' | 'super_admin' = 'user'): {
     openId: "test-user-openid",
     email: "test@example.com",
     name: "Test User",
-    loginMethod: "manus",
+    loginMethod: "google",
     role,
     createdAt: new Date(),
     updatedAt: new Date(),
