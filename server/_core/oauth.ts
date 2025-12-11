@@ -9,45 +9,58 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
+export async function oauthCallbackHandler(req: Request, res: Response) {
+  const errorParam = getQueryParam(req, "error");
+  if (errorParam) {
+    res.status(400).json({ error: `OAuth error: ${errorParam}` });
+    return;
+  }
 
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+  const code = getQueryParam(req, "code");
+  if (!code) {
+    res.status(400).json({ error: "Missing authorization code" });
+    return;
+  }
+
+  try {
+    // 1) Exchange authorization code for tokens
+    const tokenResponse = await sdk.exchangeCodeForToken(code);
+
+    // 2) Retrieve user info from Google UserInfo endpoint
+    const userInfo = await sdk.getUserInfo(tokenResponse.access_token);
+
+    // Google OIDC unique user id is in `sub`
+    if (!userInfo.sub) {
+      res.status(400).json({ error: "Missing 'sub' in Google user info" });
       return;
     }
 
-    try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+    // 3) Upsert local user record
+    await db.upsertUser({
+      openId: userInfo.sub,
+      name: userInfo.name || null,
+      email: userInfo.email ?? null,
+      loginMethod: "google",
+      lastSignedIn: new Date(),
+    });
 
-      if (!userInfo.openId) {
-        res.status(400).json({ error: "openId missing from user info" });
-        return;
-      }
+    // 4) Create session token and set cookie
+    const sessionToken = await sdk.createSessionToken(userInfo.sub, {
+      name: userInfo.name || "",
+      expiresInMs: ONE_YEAR_MS,
+    });
 
-      await db.upsertUser({
-        openId: userInfo.openId,
-        name: userInfo.name || null,
-        email: userInfo.email ?? null,
-        loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-        lastSignedIn: new Date(),
-      });
+    const cookieOptions = getSessionCookieOptions(req);
+    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
+    // 5) Redirect to app root (or consider preserving original state/redirect)
+    res.redirect(302, "/");
+  } catch (error) {
+    console.error("[OAuth] Callback failed", error);
+    res.status(500).json({ error: "OAuth callback failed" });
+  }
+}
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      res.redirect(302, "/");
-    } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
-    }
-  });
+export function registerOAuthRoutes(app: Express) {
+  app.get("/api/oauth/callback", oauthCallbackHandler);
 }

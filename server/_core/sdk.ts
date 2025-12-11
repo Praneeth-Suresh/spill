@@ -52,11 +52,10 @@ class SDKServer {
   /**
    * Exchange Google OAuth authorization code for access token
    * @example
-   * const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+   * const tokenResponse = await sdk.exchangeCodeForToken(code);
    */
   async exchangeCodeForToken(
     code: string,
-    state: string
   ): Promise<GoogleTokenResponse> {
     const params = new URLSearchParams(Object.entries({
       code,
