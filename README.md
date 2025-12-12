@@ -24,7 +24,11 @@ This will:
 - Start Vite dev server with HMR (Hot Module Replacement)
 - Watch for file changes and auto-reload
 
-Note that `cross-env` is used to ensure that the application can process envrionment variables correctly when using Windows.
+**Note** that `cross-env` is used to ensure that the application can process envrionment variables correctly when using Windows.
+
+> [!WARNING]
+>
+> Always ensure that the database is set up before running the app.
 
 ## Repository Structure
 
@@ -107,6 +111,37 @@ To set up environment variables, follow the documentation for required environme
 A multi-stage build is used. This reduces the final image size by excluding development dependencies and build tools. The builder stage compiles the code, and the production stage only includes the compiled output and runtime dependencies.
 
 Alpine Linux is chosen because Alpine is a minimal Linux distribution (5MB vs 100MB+ for Ubuntu), resulting in smaller Docker images and faster deployments.
+
+Here is what the DockerFile does:
+
+**Build Stage**
+
+- Installs pnpm
+- Installs all dependencies
+- Builds frontend and backend with pnpm build
+
+**Runtime Stage**
+
+- Installs only production dependencies
+- Copies built artifacts (dist, drizzle)
+- Copies drizzle.config.ts (needed for Drizzle ORM)
+- Exposes port 3000
+- Healthcheck matches compose file
+- Starts app with node dist/index.js
+
+Here is how the docker compose setup can be done:
+
+```bash
+docker-compose up --build
+```
+
+If you make any changes to the codebase, then use the command:
+
+```bash
+docker-compose build --no-cache
+```
+
+to ensure that any fixes are carried through to the image.
 
 ## Taking this project forward
 
