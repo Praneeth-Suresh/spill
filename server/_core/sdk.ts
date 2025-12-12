@@ -152,6 +152,8 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
+      console.log("Verified session payload:", payload);
+
       if (
         !isNonEmptyString(openId) ||
         !isNonEmptyString(appId) ||

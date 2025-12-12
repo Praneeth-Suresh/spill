@@ -64,6 +64,8 @@ Here is how cookies are used in the application:
 - This token is set as a cookie in the user's browser.
 - On every request to protected endpoints, the backend checks for the presence of the session cookie.
 
+It is very important to keep in mind that the cookie in development and in production is different. In production, a secure cookie, sent over HTTPS is used.
+
 ## `_core/systemRouter.ts`
 
 This file defines a TRPC router for system-level endpoints, including:

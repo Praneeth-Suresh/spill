@@ -44,3 +44,12 @@ The files in the lib folder provide utility functions and libraries that support
 
 - `trpc.ts`: Sets up type-safe tRPC React hooks for communicating with the backend API. It allows frontend components to easily call backend procedures (like [trpc.auth.me.useQuery()](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html)) with full TypeScript type inference, ensuring type safety and reducing boilerplate.
 - `utils.ts`: Exports a utility function [cn](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) that combines and merges CSS class names using [clsx](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) and `tailwind-merge`. This helps manage dynamic and conditional Tailwind CSS class names in a clean and conflict-free way.
+
+# Authentication
+
+Across the applicaiton, authentication involves:
+
+1. Checking if a session cookie has been created. A cookie will be created only if the user tries to login. No login attempt means no cookie will be created. This leads to the following warning being printed on the console: "[Auth] Missing session cookie"
+2. If there is a cookies, data inside the cookie is decoded to determine user details from the login
+3. If the user is not in the database, they are added to the database as a user. If they are, then the application will check their role.
+4. If they are `admin`/`super_admin` then they will be granted to right to access the blocked web pages
