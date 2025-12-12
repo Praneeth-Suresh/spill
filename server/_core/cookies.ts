@@ -39,10 +39,16 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // Modern browsers require that cookies with SameSite=None must also 
+  // have Secure: true  // (i.e., only sent over HTTPS). 
+  // If secure is false, the browser will silently reject the cookie and not store it.
+
+  const isDev = process.env.NODE_ENV === "development";
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
+    sameSite: isDev ? "lax" : "none",
     secure: isSecureRequest(req),
   };
 }
+

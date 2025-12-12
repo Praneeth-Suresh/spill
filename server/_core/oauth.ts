@@ -50,8 +50,9 @@ export async function oauthCallbackHandler(req: Request, res: Response) {
       expiresInMs: ONE_YEAR_MS,
     });
 
-    const cookieOptions = getSessionCookieOptions(req);
-    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+    const cookieOptions = { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS };
+    console.log("Setting cookie with options:", cookieOptions);
+    res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
 
     // 5) Redirect to app root (or consider preserving original state/redirect)
     res.redirect(302, "/");

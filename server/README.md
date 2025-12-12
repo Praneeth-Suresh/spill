@@ -58,6 +58,12 @@ The role of this script is to manage cookie creation. Here are key configuration
 - SameSite: "none" allows the cookie to be sent with the OAuth cross-site requests. This requires secure: true (HTTPS).
 - In development (HTTP), secure cookies don't work. But in production (HTTPS), secure cookies are required for security
 
+Here is how cookies are used in the application:
+
+- After a successful OAuth login (e.g., Google), the backend creates a session token (often a JWT) that contains user information.
+- This token is set as a cookie in the user's browser.
+- On every request to protected endpoints, the backend checks for the presence of the session cookie.
+
 ## `_core/systemRouter.ts`
 
 This file defines a TRPC router for system-level endpoints, including:
