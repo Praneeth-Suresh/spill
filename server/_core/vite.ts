@@ -1,12 +1,14 @@
-import express, { type Express } from "express";
-import fs from "fs";
-import { type Server } from "http";
-import { nanoid } from "nanoid";
+import type { Express } from "express";
+import express from "express";
+import type { Server } from "http";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
+import fs from "fs";
 
 export async function setupVite(app: Express, server: Server) {
+  // Dynamically import Vite and the config only in dev
+  const { createServer: createViteServer } = await import("vite");
+  const viteConfig = (await import("../../vite.config")).default;
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -21,9 +23,9 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+
   app.use(async (req, res, next) => {
     const url = req.originalUrl;
-
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
@@ -31,15 +33,15 @@ export async function setupVite(app: Express, server: Server) {
         "client",
         "index.html"
       );
-
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
+      if (!fs.existsSync(clientTemplate)) {
+        console.error(`Missing client index.html at ${clientTemplate}`);
+        return next();
+      }
+      const html = await vite.transformIndexHtml(
+        url,
+        fs.readFileSync(clientTemplate, "utf-8")
       );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      res.status(200).setHeader("Content-Type", "text/html").end(html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

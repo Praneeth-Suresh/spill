@@ -30,6 +30,13 @@ This will:
 >
 > Always ensure that the database is set up before running the app.
 
+To run the application in production, use:
+
+```bash
+pnpm build
+node dist/index.js
+```
+
 ## Repository Structure
 
 Here is the role played by the directories in this project:
@@ -143,8 +150,12 @@ docker-compose build --no-cache
 
 to ensure that any fixes are carried through to the image.
 
+Note that the container is a **production container** so it will work **only if** the environment variable `NODE_ENV` is set to `production`. Development dependencies are not installed within the container because this increases image size.
+
+Since development dependencies are not in the container, the code is carefully crafted to ensure that none of the development dependencies (particularly `vite`) are bundled into `dist`.
+
 ## Taking this project forward
 
-Here are some of the things that are planned in the pipeline for this project.
+Here are some of the things that are in the pipeline for this project.
 
-I am looking at implementing real-time updates with WebSocket connections, adding email notifications for critical issues, implementing rate limiting to prevent abuse, adding more analytics visualizations and creating a mobile app with React Native.
+I am looking at implementing real-time uvpdates with WebSocket connections, adding email notifications for critical issues, implementing rate limiting to prevent abuse, adding more analytics visualizations and creating a mobile app with React Native.
