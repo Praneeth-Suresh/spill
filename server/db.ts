@@ -11,6 +11,7 @@ import {
   uploadedFiles,
   adminFacilities,
   questionBranching,
+  points,
   type Facility,
   type Question,
   type QuestionOption,
@@ -36,6 +37,49 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+/**
+ * Fetch points for a normalized IP address.
+ */
+export async function getPointsByIp(ipAddress: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select().from(points).where(eq(points.ipAddress, ipAddress)).limit(1);
+  return result[0] ?? null;
+}
+
+/**
+ * Increment points for an IP address, inserting when absent.
+ */
+export async function incrementPointsByIp(ipAddress: string, delta: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.insert(points).values({
+    ipAddress,
+    points: delta,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: {
+      points: sql`${points.points} + ${delta}`,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+/**
+ * Increment points for a user by userId.
+ */
+export async function incrementUserPoints(userId: number, delta: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.update(users)
+    .set({ points: sql`${users.points} + ${delta}`, updatedAt: new Date() })
+    .where(eq(users.id, userId));
 }
 
 /**

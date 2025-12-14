@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Request, Response } from "express";
 import { COOKIE_NAME } from "../shared/const";
 
-const upsertUser = vi.fn(async () => {});
+const upsertUser = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock("./db", () => ({
   upsertUser,

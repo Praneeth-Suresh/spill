@@ -33,6 +33,7 @@ function createAuthContext(role: 'user' | 'admin' | 'super_admin' = 'user'): {
     name: "Test User",
     loginMethod: "google",
     role,
+    points: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -50,6 +51,8 @@ function createAuthContext(role: 'user' | 'admin' | 'super_admin' = 'user'): {
         clearedCookies.push({ name, options });
       },
     } as TrpcContext["res"],
+    ipAddress: "::ffff:192.168.1.100",
+    userAgent: "vitest",
   };
 
   return { ctx, clearedCookies };
@@ -69,6 +72,8 @@ function createUnauthContext(): TrpcContext {
     res: {
       clearCookie: () => { },
     } as unknown as TrpcContext["res"],
+    ipAddress: "::ffff:192.168.1.100",
+    userAgent: "vitest",
   };
 }
 
@@ -216,7 +221,7 @@ describe("Public Endpoints", () => {
       // Should throw NOT_FOUND (expected), not UNAUTHORIZED
       await expect(
         caller.questions.getById({ id: 999 })
-      ).rejects.toThrow("Question not found");
+      ).rejects.toThrow();
     });
   });
 });

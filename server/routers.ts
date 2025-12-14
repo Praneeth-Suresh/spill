@@ -7,6 +7,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
+import type { TrpcContext } from "./_core/context";
 
 /**
  * Admin-only procedure that checks if user has admin or super_admin role.
@@ -35,6 +36,26 @@ const superAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+const DEFAULT_POINTS = Number(process.env.VITE_DEFAULT_POINTS ?? 0);
+
+async function resolvePointsSnapshot(ctx: TrpcContext) {
+  if (ctx.user) {
+    const user = await db.getUserByOpenId(ctx.user.openId);
+    if (user) {
+      return { source: 'user' as const, points: user.points ?? 0 };
+    }
+  }
+
+  if (ctx.ipAddress) {
+    const ipPoints = await db.getPointsByIp(ctx.ipAddress);
+    if (ipPoints) {
+      return { source: 'ip' as const, points: ipPoints.points ?? 0 };
+    }
+  }
+
+  return { source: 'default' as const, points: DEFAULT_POINTS };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -100,17 +121,35 @@ export const appRouter = router({
         })),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Get IP address from request
-        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for'] as string || 'unknown';
-        const userAgent = ctx.req.headers['user-agent'] || null;
+        const questionRecord = await db.getQuestionById(input.questionId);
+        if (!questionRecord) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Question not found' });
+        }
+
+        const ipAddress = ctx.ipAddress;
+        const userAgent = ctx.userAgent;
 
         const responseId = await db.submitResponse(
           input.questionId,
           input.facilityId,
-          ipAddress,
+          ipAddress ?? 'unknown',
           userAgent,
           input.answers
         );
+
+        const pointsToAward = questionRecord.question.pointsAwarded ?? 0;
+
+        if (!ipAddress) {
+          console.warn("IP address not found: not updating points");
+        } else if (pointsToAward !== 0) {
+          await db.incrementPointsByIp(ipAddress, pointsToAward);
+        }
+
+        if (ctx.user && pointsToAward !== 0) {
+          await db.incrementUserPoints(ctx.user.id, pointsToAward);
+        }
+
+        const pointsSnapshot = await resolvePointsSnapshot(ctx);
 
         // Evaluate branching logic
         const { evaluateNextQuestion } = await import('./branching');
@@ -127,7 +166,8 @@ export const appRouter = router({
           success: true, 
           responseId, 
           nextQuestionId,
-          redirectToHome 
+          redirectToHome,
+          points: pointsSnapshot,
         };
       }),
 
@@ -155,8 +195,8 @@ export const appRouter = router({
         const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
 
         // Get IP address for logging
-        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for'] as string || 'unknown';
-        const userAgent = ctx.req.headers['user-agent'] || null;
+        const ipAddress = ctx.ipAddress ?? 'unknown';
+        const userAgent = ctx.userAgent;
 
         // Create temporary response record (will be linked later)
         const responseId = await db.submitResponse(
@@ -196,6 +236,15 @@ export const appRouter = router({
      */
     getAll: publicProcedure.query(async () => {
       return await db.getAllActiveFacilities();
+    }),
+  }),
+
+  /**
+   * Points endpoints for displaying balances.
+   */
+  points: router({
+    current: publicProcedure.query(async ({ ctx }) => {
+      return resolvePointsSnapshot(ctx);
     }),
   }),
 

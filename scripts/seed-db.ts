@@ -67,6 +67,7 @@ async function seed() {
         redirectToHome: false, // This IS the home
         displayOrder: 0,
         isActive: true,
+        pointsAwarded: 0,
       },
     ]);
 
@@ -85,6 +86,7 @@ async function seed() {
         redirectToHome: true,
         displayOrder: 1,
         isActive: true,
+        pointsAwarded: 300,
       },
     ]);
 
@@ -125,6 +127,7 @@ async function seed() {
         redirectToHome: true,
         displayOrder: 2,
         isActive: true,
+        pointsAwarded: 200,
       },
     ]);
 
@@ -143,6 +146,7 @@ async function seed() {
         redirectToHome: true,
         displayOrder: 3,
         isActive: true,
+        pointsAwarded: 100,
       },
     ]);
 
@@ -169,6 +173,12 @@ async function seed() {
     ]);
 
     console.log('✅ Created Oasis activities poll with 3 options');
+
+    // Seed sample points for anonymous IPs (IPv4 mapped to IPv6)
+    await db.insert(schema.points).values([
+      { ipAddress: '::ffff:192.168.1.50', points: 900 },
+      { ipAddress: '::ffff:192.168.1.75', points: 1200 },
+    ]);
 
     // Create sample responses for testing analytics
     console.log('Creating sample responses...');

@@ -22,6 +22,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     name: "Sample User",
     loginMethod: "google",
     role: "user",
+    points: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -38,6 +39,8 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
         clearedCookies.push({ name, options });
       },
     } as TrpcContext["res"],
+    ipAddress: "::ffff:192.168.1.100",
+    userAgent: "vitest",
   };
 
   return { ctx, clearedCookies };

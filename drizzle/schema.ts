@@ -12,6 +12,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin", "super_admin"]).default("user").notNull(),
+  points: int("points").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -73,6 +74,7 @@ export const questions = mysqlTable("questions", {
   redirectToHome: boolean("redirectToHome").default(true).notNull(), // Redirect to home after submission
   displayOrder: int("displayOrder").default(0).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
+  pointsAwarded: int("pointsAwarded").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   createdBy: int("createdBy"),
@@ -173,6 +175,20 @@ export const questionBranching = mysqlTable("question_branching", {
 
 export type QuestionBranching = typeof questionBranching.$inferSelect;
 export type InsertQuestionBranching = typeof questionBranching.$inferInsert;
+
+/**
+ * Points table stores anonymous balances keyed by normalized IP (IPv4 mapped to IPv6).
+ */
+export const points = mysqlTable("points", {
+  id: int("id").autoincrement().primaryKey(),
+  ipAddress: varchar("ipAddress", { length: 45 }).notNull().unique(),
+  points: int("points").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Point = typeof points.$inferSelect;
+export type InsertPoint = typeof points.$inferInsert;
 
 /**
  * Define relations for Drizzle ORM query builder

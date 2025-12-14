@@ -8,6 +8,20 @@
       "when": 1765107445303,
       "tag": "0000_aspiring_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765107445304,
+      "tag": "0001_points_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1765720437515,
+      "tag": "0002_funny_mephisto",
+      "breakpoints": true
     }
   ]
 }

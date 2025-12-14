@@ -1,11 +1,14 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
+import { getNormalizedIpFromRequest } from "./ip";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  ipAddress: string | null;
+  userAgent: string | null;
 };
 
 /**
@@ -30,5 +33,7 @@ export async function createContext(
     req: opts.req,
     res: opts.res,
     user,
+    ipAddress: getNormalizedIpFromRequest(opts.req),
+    userAgent: opts.req.headers["user-agent"] ?? null,
   };
 }

@@ -1,4 +1,42 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MySql2Database } from "drizzle-orm/mysql2";
+
+const fakeQuestion = {
+  id: 1,
+  facilityId: 1,
+  type: "text",
+  title: "Sample",
+  description: null,
+  placeholder: null,
+  isRequired: true,
+  allowMultiple: false,
+  maxFileSize: null,
+  allowedFileTypes: null,
+  nextQuestionId: null,
+  redirectToHome: true,
+  displayOrder: 0,
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
+  pointsAwarded: 0,
+};
+
+const fakeDb = {
+  select: vi.fn().mockReturnThis(),
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockResolvedValue([]),
+  limit: vi.fn().mockResolvedValue([fakeQuestion]),
+  insert: vi.fn().mockReturnThis(),
+  update: vi.fn().mockReturnThis(),
+  values: vi.fn().mockReturnThis(),
+  set: vi.fn().mockReturnThis(),
+} as unknown as MySql2Database;
+
+vi.mock("./db", () => ({
+  getDb: vi.fn(async () => fakeDb),
+}));
 import { evaluateNextQuestion, createBranchingRule, updateQuestionSequence } from "./branching";
 // Ensure environment variables are loaded
 import 'dotenv/config';
@@ -11,45 +49,77 @@ import 'dotenv/config';
 describe("Question Branching Logic", () => {
   describe("evaluateNextQuestion", () => {
     it("returns default next question when no branching rules exist", async () => {
-      // This test will fail without DB, but demonstrates the expected behavior
-      const result = await evaluateNextQuestion(999, []);
-      
-      // Should return default settings from question
-      expect(result).toHaveProperty('nextQuestionId');
-      expect(result).toHaveProperty('redirectToHome');
+      vi.spyOn(fakeDb, "orderBy").mockResolvedValueOnce([] as any);
+      const result = await evaluateNextQuestion(1, []);
+      expect(result).toEqual({ nextQuestionId: null, redirectToHome: true });
     });
 
     it("evaluates option_selected condition correctly", async () => {
-      // Test that when a specific option is selected, the correct branch is taken
-      // This would require seeding test data in the database
-      
-      // Mock scenario: Question 2 (movie poll) with branching rules
-      // - If option 1 selected → go to question 5
-      // - If option 2 selected → go to question 6
-      // - Default → go to home
-      
-      const result = await evaluateNextQuestion(2, [1]);
-      
-      // Expected: Should follow branching rule for option 1
-      expect(result).toBeDefined();
+      vi.spyOn(fakeDb, "orderBy").mockResolvedValueOnce([
+        {
+          id: 1,
+          questionId: 1,
+          optionId: 10,
+          condition: "option_selected",
+          nextQuestionId: 5,
+          redirectToHome: false,
+          priority: 0,
+          isActive: true,
+          createdAt: new Date(),
+        },
+      ] as any);
+
+      const result = await evaluateNextQuestion(1, [10]);
+      expect(result).toEqual({ nextQuestionId: 5, redirectToHome: false });
     });
 
     it("evaluates any_answer condition correctly", async () => {
-      // Test that any answer triggers the branch
-      const result = await evaluateNextQuestion(3, []);
-      
-      // Expected: Should follow any_answer rule if it exists
-      expect(result).toBeDefined();
+      vi.spyOn(fakeDb, "orderBy").mockResolvedValueOnce([
+        {
+          id: 2,
+          questionId: 1,
+          optionId: null,
+          condition: "any_answer",
+          nextQuestionId: 7,
+          redirectToHome: false,
+          priority: 0,
+          isActive: true,
+          createdAt: new Date(),
+        },
+      ] as any);
+
+      const result = await evaluateNextQuestion(1, []);
+      expect(result).toEqual({ nextQuestionId: 7, redirectToHome: false });
     });
 
     it("prioritizes rules by priority order", async () => {
-      // Test that lower priority number rules are evaluated first
-      // If multiple rules match, the one with lowest priority value wins
-      
-      const result = await evaluateNextQuestion(4, [4, 5]);
-      
-      // Expected: Should use rule with lowest priority value
-      expect(result).toBeDefined();
+      vi.spyOn(fakeDb, "orderBy").mockResolvedValueOnce([
+        {
+          id: 4,
+          questionId: 1,
+          optionId: 11,
+          condition: "option_selected",
+          nextQuestionId: 9,
+          redirectToHome: true,
+          priority: 0,
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: 3,
+          questionId: 1,
+          optionId: 11,
+          condition: "option_selected",
+          nextQuestionId: 8,
+          redirectToHome: false,
+          priority: 1,
+          isActive: true,
+          createdAt: new Date(),
+        },
+      ] as any);
+
+      const result = await evaluateNextQuestion(1, [11]);
+      expect(result).toEqual({ nextQuestionId: 9, redirectToHome: true });
     });
   });
 
