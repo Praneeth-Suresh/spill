@@ -67,6 +67,7 @@ Here are the key pieces of information that the database is designed to store:
 - Response answers store individual answer data.
 - Uploaded files track file metadata and S3 references.
 - Question branching defines conditional navigation rules.
+- Updates store the public activity feed (date, person, content blob, relevance). Content uses double newlines (`\n\n`) to delimit paragraphs for display.
 
 Each of the above sets of data corresponds to a table.
 
@@ -98,6 +99,12 @@ Note that Drizzle does not automatically create tables on seed. For this you nee
 pnpm exec drizzle-kit generate
 pnpm exec drizzle-kit push
 ```
+
+### Manual data entry for updates
+
+- `content` should use double newlines (`\n\n`) between paragraphs; each paragraph is rendered separately.
+- `relevance` is an integer 1–10; the top three scores (ties broken by most recent `date`) are shown on `/updates`.
+- Use the same date format as other tables (timestamp); local server time is used for “today” checks.
 
 ## Running Tests
 

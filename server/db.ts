@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -12,12 +12,15 @@ import {
   adminFacilities,
   questionBranching,
   points,
+  ipAddresses,
+  updates,
   type Facility,
   type Question,
   type QuestionOption,
   type Response,
   type ResponseAnswer,
   type AdminFacility,
+  type Update,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -68,6 +71,43 @@ export async function incrementPointsByIp(ipAddress: string, delta: number) {
       updatedAt: new Date(),
     },
   });
+}
+
+/**
+ * Upsert IP activity for session gating.
+ */
+export async function recordIpActivity(ipAddress: string) {
+  const db = await getDb();
+  if (!db) return;
+
+  const now = new Date();
+
+  await db.insert(ipAddresses).values({
+    ipAddress,
+    createdAt: now,
+    updatedAt: now,
+  }).onDuplicateKeyUpdate({
+    set: { updatedAt: now },
+  });
+}
+
+/**
+ * Check if IP has activity today (local server time start-of-day).
+ */
+export async function hasIpActivityToday(ipAddress: string, now: Date = new Date()): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const result = await db
+    .select({ exists: sql`1` })
+    .from(ipAddresses)
+    .where(and(eq(ipAddresses.ipAddress, ipAddress), gte(ipAddresses.updatedAt, startOfDay)))
+    .limit(1);
+
+  return result.length > 0;
 }
 
 /**
@@ -504,4 +544,18 @@ export async function exportResponses(
     ipAddress: r.ipAddress,
     submittedAt: r.submittedAt,
   }));
+}
+
+/**
+ * Fetch top updates ordered by relevance then most recent date.
+ */
+export async function getTopUpdates(limit: number = 3): Promise<Update[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(updates)
+    .orderBy(desc(updates.relevance), desc(updates.date))
+    .limit(limit);
 }

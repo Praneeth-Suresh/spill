@@ -34,7 +34,7 @@ export default function QuestionPage() {
       if (data.nextQuestionId) {
         setLocation(`/question/${data.nextQuestionId}`);
       } else if (data.redirectToHome) {
-        setLocation("/home");
+        setLocation("/updates");
       } else {
         setLocation("/results/" + questionData?.question.id);
       }

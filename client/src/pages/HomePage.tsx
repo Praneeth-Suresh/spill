@@ -4,7 +4,8 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { CircleDollarSign, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import PointsBadge from "@/components/PointsBadge";
 
 /**
  * HomePage displays the generic feedback form (home question).
@@ -15,8 +16,6 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
   const [feedback, setFeedback] = useState("");
   const utils = trpc.useUtils();
-
-  const { data: pointsData, isLoading: isPointsLoading } = trpc.points.current.useQuery();
 
   // Home question is typically ID 1 (created in seed data)
   const { data: questionData } = trpc.questions.getById.useQuery({ id: 1 });
@@ -55,18 +54,7 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">spill.</h1>
-        <div className="bg-white border-2 border-black rounded-2xl px-4 py-2 shadow-sm flex items-center gap-3 min-w-[120px] justify-between">
-          <div className="flex items-center justify-center rounded-full border-2 border-black bg-primary h-9 w-9">
-            <CircleDollarSign className="h-5 w-5 text-black" />
-          </div>
-          {isPointsLoading ? (
-            <div className="h-5 w-14 rounded bg-black/10 animate-pulse" />
-          ) : (
-            <span className="text-xl font-semibold tabular-nums">
-              {(pointsData?.points ?? Number(import.meta.env.VITE_DEFAULT_POINTS ?? 0)).toLocaleString()}
-            </span>
-          )}
-        </div>
+        <PointsBadge />
       </div>
 
       {/* Feedback Card */}

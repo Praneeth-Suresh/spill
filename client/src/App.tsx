@@ -9,6 +9,7 @@ import QuestionPage from "./pages/QuestionPage";
 import ResultsPage from "./pages/ResultsPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import FacilityDashboard from "./pages/FacilityDashboard";
+import UpdatesPage from "./pages/UpdatesPage";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path={"/results/:id"} component={ResultsPage} />
       <Route path={"/admin"} component={AdminDashboard} />
       <Route path={"/facility/:code"} component={FacilityDashboard} />
+      <Route path={"/updates"} component={UpdatesPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

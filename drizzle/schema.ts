@@ -191,6 +191,37 @@ export type Point = typeof points.$inferSelect;
 export type InsertPoint = typeof points.$inferInsert;
 
 /**
+ * Tracks IP activity for gating access to the updates page.
+ * updatedAt is refreshed on each submission for same-day access checks.
+ */
+export const ipAddresses = mysqlTable("ip_addresses", {
+  id: int("id").autoincrement().primaryKey(),
+  ipAddress: varchar("ipAddress", { length: 45 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IpAddress = typeof ipAddresses.$inferSelect;
+export type InsertIpAddress = typeof ipAddresses.$inferInsert;
+
+/**
+ * Updates feed shown on the new updates page.
+ * Content stored as single text blob; paragraphs are delimited by double newlines.
+ */
+export const updates = mysqlTable("updates", {
+  id: int("id").autoincrement().primaryKey(),
+  date: timestamp("date").defaultNow().notNull(),
+  person: varchar("person", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  relevance: int("relevance").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Update = typeof updates.$inferSelect;
+export type InsertUpdate = typeof updates.$inferInsert;
+
+/**
  * Define relations for Drizzle ORM query builder
  */
 export const usersRelations = relations(users, ({ many }) => ({
@@ -298,3 +329,7 @@ export const questionBranchingRelations = relations(questionBranching, ({ one })
     references: [questions.id],
   }),
 }));
+
+export const updatesRelations = relations(updates, ({ }) => ({}));
+
+export const ipAddressesRelations = relations(ipAddresses, ({ }) => ({}));

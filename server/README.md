@@ -88,6 +88,8 @@ When behind a reverse proxy (like Railway, Nginx, or Cloudflare), `req.socket.re
 
 This file is key for security because it ensures that only the permitted users can access the relevant endpoints.
 
+> Redirect behavior: when branching logic returns `redirectToHome`, the client now routes to the `/updates` page (the activity feed) instead of the home question. The `/updates` endpoint is guarded by IP activity so direct navigation without answering a question that day redirects back home.
+
 ## `branching.ts`
 
 This defines the key branching logic. A branching logic allows a series of questions to be created. It also allows a redirect to a fresh question page once the question is answered.
@@ -98,6 +100,8 @@ Here is the branching algorithms:
 2. For each rule, check if condition matches
 3. Return first matching rule's destination
 4. If no rules match, return question's default nextQuestionId
+
+Redirects to the updates page are still represented by the `redirectToHome` flag. The client interprets this flag as “go to /updates”.
 
 Multiple rules might match the same response. Priority ensures deterministic behavior - the rule with the lowest priority number wins. This allows complex logic like "if option A, go to Q5; if option B, go to Q6; otherwise go to Q7".
 
@@ -117,6 +121,8 @@ Authorization bugs can have serious security implications. Testing each role's a
 
 Here is where all the tests about sequencing, branching logic and navigation flows go.
 
+This mocks the DB to avoid using the real DB. This enables the tests to be run without the database needing to be up. These are unit tests that check only the functionality.
+
 ## `auth.logout.test.ts`
 
 Here, we have tests that specifically test the logout functionality of the application's authentication system.
@@ -124,3 +130,7 @@ Here, we have tests that specifically test the logout functionality of the appli
 It verifies that when the logout endpoint is called, the session cookie is properly cleared with the correct options and a success response is returned.
 
 It helps guarantee that users can reliably log out and that their session data is invalidated, which is a critical aspect of application security and user experience.
+
+## `points.tests.ts`
+
+Checks the system for awarding points.

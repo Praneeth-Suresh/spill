@@ -11,6 +11,7 @@ vi.mock("./db", async () => {
     incrementUserPoints: vi.fn(),
     getPointsByIp: vi.fn(),
     getUserByOpenId: vi.fn(),
+    recordIpActivity: vi.fn(),
   } satisfies Partial<typeof actual>;
 });
 
@@ -86,6 +87,7 @@ describe("Points awarding on submission", () => {
 
     expect(mockedDb.incrementPointsByIp).toHaveBeenCalledWith("::ffff:192.168.0.10", 300);
     expect(mockedDb.incrementUserPoints).not.toHaveBeenCalled();
+    expect(mockedDb.recordIpActivity).toHaveBeenCalledWith("::ffff:192.168.0.10");
     expect(result.points.points).toBe(ipPoints);
     expect(result.points.source).toBe("ip");
   });

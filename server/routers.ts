@@ -145,6 +145,10 @@ export const appRouter = router({
           await db.incrementPointsByIp(ipAddress, pointsToAward);
         }
 
+        if (ipAddress) {
+          await db.recordIpActivity(ipAddress);
+        }
+
         if (ctx.user && pointsToAward !== 0) {
           await db.incrementUserPoints(ctx.user.id, pointsToAward);
         }
@@ -245,6 +249,32 @@ export const appRouter = router({
   points: router({
     current: publicProcedure.query(async ({ ctx }) => {
       return resolvePointsSnapshot(ctx);
+    }),
+  }),
+
+  updates: router({
+    /**
+     * Fetch top relevant updates for the feed. Requires that the requester has answered today.
+     */
+    top: publicProcedure.query(async ({ ctx }) => {
+      if (!ctx.ipAddress) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'IP address required' });
+      }
+
+      const allowed = await db.hasIpActivityToday(ctx.ipAddress, new Date());
+      if (!allowed) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'No recent activity' });
+      }
+
+      const items = await db.getTopUpdates();
+
+      return items.map(item => ({
+        id: item.id,
+        date: item.date,
+        person: item.person,
+        relevance: item.relevance,
+        paragraphs: item.content.split(/\n\n+/).filter(Boolean),
+      }));
     }),
   }),
 

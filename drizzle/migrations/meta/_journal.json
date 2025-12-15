@@ -22,6 +22,13 @@
       "when": 1765720437515,
       "tag": "0002_funny_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1765833600000,
+      "tag": "0003_updates_feed",
+      "breakpoints": true
     }
   ]
 }

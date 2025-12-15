@@ -174,6 +174,30 @@ async function seed() {
 
     console.log('✅ Created Oasis activities poll with 3 options');
 
+    // Seed updates feed entries
+    console.log('Creating updates feed...');
+    await db.insert(schema.updates).values([
+      {
+        date: new Date(),
+        person: 'Operations',
+        content: 'We\'re in contact with the vendor to repair the fridge. It\'ll be ready soon!\n\nThanks for reporting the issues!\n\nStay tuned for more updates.',
+        relevance: 10,
+      },
+      {
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        person: 'Choon Heng',
+        content: 'Update: we solved the light issue. It should be working well now.\n\nWe\'re looking into the complaints about the fridge. Stay tuned for any updates.\n\nCheers!',
+        relevance: 9,
+      },
+      {
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        person: 'Facilities',
+        content: 'Floor markings have been refreshed across the hall.\n\nNew cleaning schedule is in place to reduce dust.\n\nReport any issues via spill and we\'ll take a look.',
+        relevance: 8,
+      },
+    ]);
+    console.log('✅ Seeded updates feed');
+
     // Seed sample points for anonymous IPs (IPv4 mapped to IPv6)
     await db.insert(schema.points).values([
       { ipAddress: '::ffff:192.168.1.50', points: 900 },
@@ -263,6 +287,7 @@ async function seed() {
     console.log('- 2 poll questions (movie, activities)');
     console.log('- 1 text question (equipment report)');
     console.log('- 153 total sample responses');
+    console.log('- 3 updates entries');
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);
