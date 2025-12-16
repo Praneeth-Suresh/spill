@@ -1,10 +1,10 @@
 import "dotenv/config";
 import express from "express";
-import { createServer } from "http";
+import http from "http";
 import net from "net";
 import path from "path";
 import fs from "fs";
-import https from "https";
+import https from "https"; 
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -29,13 +29,46 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+function isInContainer() {
+  try {
+    return (
+      fs.existsSync("/.dockerenv") ||
+      (fs.existsSync("/proc/1/cgroup") &&
+        fs.readFileSync("/proc/1/cgroup", "utf8").includes("docker"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function startServer() {
   const app = express();
-  const options = {
-    key: fs.readFileSync("server.key"),
-    cert: fs.readFileSync("server.cert"),
-  };
-  const server = https.createServer(options, app);
+
+  let server;
+  if (
+    process.env.RAILWAY_STATIC_URL ||
+    process.env.RAILWAY_ENVIRONMENT
+  ) {
+    server = http.createServer(app);
+    console.log("Running on Railway: using HTTP server (Railway provides HTTPS)");
+  } else if (isInContainer()) {
+    server = http.createServer(app);
+    console.log("Running in container: using HTTP server (no HTTPS certs available)");
+  } else if (process.env.NODE_ENV === "production") {
+    const options = {
+      key: fs.readFileSync("server.key"),
+      cert: fs.readFileSync("server.cert"),
+    };
+    server = https.createServer(options, app);
+    console.log("Running in production: using HTTPS server");
+  } else {
+    const options = {
+      key: fs.readFileSync("server.key"),
+      cert: fs.readFileSync("server.cert"),
+    };
+    server = https.createServer(options, app);
+    console.log("Running in development: using HTTPS server");
+  }
 
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 

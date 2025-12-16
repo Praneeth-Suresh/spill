@@ -30,12 +30,7 @@ This will:
 >
 > Always ensure that the database is set up before running the app.
 
-To run the application in production, use:
-
-```bash
-pnpm build
-node dist/index.js
-```
+HTTP is used in development mode so the cookies are not secure.
 
 ## Repository Structure
 
@@ -119,6 +114,19 @@ Ensure your tests use a separate test database to avoid polluting production dat
 ## Deployment
 
 To set up environment variables, follow the documentation for required environment variables in `.env.example`.
+
+To run the application in production, use:
+
+```bash
+pnpm build
+node dist/index.js
+```
+
+This uses HTTPS so access the application at `https://...`. HTTPS is used because in the production environement, cookies need to be secure which is only available through HTTPS. This requires that a self-signed certificate is created and available in the root directory. If there is no self-signed certificate available, run the following command in the root directory:
+
+```bash
+openssl req -nodes -new -x509 -keyout server.key -out server.cert
+```
 
 ### Docker
 

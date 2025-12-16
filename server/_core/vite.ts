@@ -5,42 +5,25 @@ import path from "path";
 import fs from "fs";
 
 export async function setupVite(app: Express, server: Server) {
-  // Dynamically import Vite and the config only in dev
+  // Import Vite only in dev
   const { createServer: createViteServer } = await import("vite");
-  const viteConfig = (await import("../../vite.config")).default;
 
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true as const,
-  };
-
+  // Inline a minimal dev config. Do NOT import ../../vite.config to avoid bundling @vitejs/plugin-react.
   const vite = await createViteServer({
-    ...viteConfig,
     configFile: false,
-    server: serverOptions,
+    server: { middlewareMode: true, hmr: { server }, allowedHosts: true as const },
     appType: "custom",
+    root: path.resolve(import.meta.dirname, "..", "..", "client"),
   });
 
   app.use(vite.middlewares);
 
   app.use(async (req, res, next) => {
-    const url = req.originalUrl;
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "../..",
-        "client",
-        "index.html"
-      );
-      if (!fs.existsSync(clientTemplate)) {
-        console.error(`Missing client index.html at ${clientTemplate}`);
-        return next();
-      }
-      const html = await vite.transformIndexHtml(
-        url,
-        fs.readFileSync(clientTemplate, "utf-8")
-      );
+      const url = req.originalUrl;
+      const clientIndex = path.resolve(import.meta.dirname, "..", "..", "client", "index.html");
+      if (!fs.existsSync(clientIndex)) return next();
+      const html = await vite.transformIndexHtml(url, fs.readFileSync(clientIndex, "utf-8"));
       res.status(200).setHeader("Content-Type", "text/html").end(html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);

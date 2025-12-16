@@ -26,6 +26,11 @@ This defines behaviour when the **express** server is started. The server uses t
 
 A separate OAuth enpoint is used because OAuth callbacks use query parameters and redirects, which don't fit the tRPC RPC model. Keeping it as a standard Express route simplifies the implementation.
 
+Deployment behaviour is defined. The app is deployed on:
+
+- HTTPS when it is run locally in production mode to test cookie behaviour
+- HTTP when it is running in a Docker container or in development mode
+
 ## `_core/vite.ts`
 
 This provides the method to run the vite server which is used in development.
