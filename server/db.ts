@@ -26,6 +26,20 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// Ensure MySQL connections allow multiple statements so multi-statement migrations work.
+function ensureMultiStatements(url: string): string {
+  try {
+    const u = new URL(url);
+    if (!u.searchParams.has("multipleStatements")) {
+      u.searchParams.set("multipleStatements", "true");
+    }
+    return u.toString();
+  } catch (err) {
+    console.warn("[Database] Invalid DATABASE_URL, using as-is", err);
+    return url;
+  }
+}
+
 /**
  * Lazily create the drizzle instance so local tooling can run without a DB.
  * Returns null if DATABASE_URL is not configured.
@@ -33,7 +47,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const url = ensureMultiStatements(process.env.DATABASE_URL);
+      _db = drizzle(url);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

@@ -19,6 +19,14 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Pass build-time environment variables
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_DEFAULT_POINTS
+ARG VITE_APP_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_DEFAULT_POINTS=$VITE_DEFAULT_POINTS
+ENV VITE_APP_ID=$VITE_APP_ID
+
 # Build frontend (Vite) and backend (esbuild)
 RUN pnpm build
 

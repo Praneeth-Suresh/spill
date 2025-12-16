@@ -1,4 +1,3 @@
-
 services:
   # MySQL/TiDB database for local development
   db:
@@ -26,6 +25,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_DEFAULT_POINTS: ${VITE_DEFAULT_POINTS}
+        VITE_APP_ID: ${VITE_APP_ID}
     container_name: spill-app
     restart: unless-stopped
     ports:

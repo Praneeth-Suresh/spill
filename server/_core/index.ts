@@ -44,6 +44,15 @@ function isInContainer() {
 async function startServer() {
   const app = express();
 
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.status(200).json({ 
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  });
+
   let server;
   if (
     process.env.RAILWAY_STATIC_URL ||
