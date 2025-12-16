@@ -4,6 +4,7 @@ import { createServer } from "http";
 import net from "net";
 import path from "path";
 import fs from "fs";
+import https from "https";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -30,7 +31,11 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
-  const server = createServer(app);
+  const options = {
+    key: fs.readFileSync("server.key"),
+    cert: fs.readFileSync("server.cert"),
+  };
+  const server = https.createServer(options, app);
 
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 
