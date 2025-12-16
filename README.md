@@ -76,6 +76,12 @@ pnpm db:push
 
 This generates SQL migration files in `drizzle/migrations/`, and applies them to the database. This manages the process of working with tables without needing to write SQL.
 
+To view the database through an interactive winodw, use:
+
+```bash
+pnpm exec drizzle-kit studio
+```
+
 ### Seeding Data
 
 For the purposes of testing the application, we are going to use seed data. This means that we don't need to manually write in content to the database before testing the application.
@@ -92,7 +98,7 @@ Note that Drizzle does not automatically create tables on seed. For this you nee
 
 ```bash
 pnpm exec drizzle-kit generate
-pnpm exec drizzle-kit push
+pnpm exec drizzle-kit migrate
 ```
 
 ### Manual data entry for updates
@@ -127,6 +133,8 @@ This uses HTTPS so access the application at `https://...`. HTTPS is used becaus
 ```bash
 openssl req -nodes -new -x509 -keyout server.key -out server.cert
 ```
+
+However, note than login will not work because OAuth providers do not trust self-authorized SSL-certs. This mode is only for testing that cookies work as expected with HTTPS.
 
 ### Docker
 

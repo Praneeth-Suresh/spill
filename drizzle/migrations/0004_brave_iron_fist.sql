@@ -1,0 +1,1 @@
+ALTER TABLE `question_branching` ADD CONSTRAINT `question_branching_questionId_questions_id_fk` FOREIGN KEY (`questionId`) REFERENCES `questions`(`id`) ON DELETE no action ON UPDATE no action;

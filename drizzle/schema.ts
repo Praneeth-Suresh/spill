@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, foreignKey } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -171,7 +171,12 @@ export const questionBranching = mysqlTable("question_branching", {
   priority: int("priority").default(0).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  questionFk: foreignKey({
+    columns: [table.questionId],
+    foreignColumns: [questions.id],
+  }),
+}));
 
 export type QuestionBranching = typeof questionBranching.$inferSelect;
 export type InsertQuestionBranching = typeof questionBranching.$inferInsert;

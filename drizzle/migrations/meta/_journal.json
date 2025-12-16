@@ -29,6 +29,13 @@
       "when": 1765833600000,
       "tag": "0003_updates_feed",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1765867925463,
+      "tag": "0004_brave_iron_fist",
+      "breakpoints": true
     }
   ]
 }
