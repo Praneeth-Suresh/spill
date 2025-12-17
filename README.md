@@ -82,6 +82,12 @@ To view the database through an interactive winodw, use:
 pnpm exec drizzle-kit studio
 ```
 
+To handle the hosted database, use the MySQL shell and the provided connection URL to connect to the database directly. Once inside the database, the tables can be created in one fell swoop by copy-pasting the commands in `mysql-init/0000_careful_karnak.sql`.
+
+> [!WARNING]
+>
+> Be sure to ensure that the `.sql` file in `mysql_init` is up to date with the database. If it needs to be updated, use drizzle but change `out` accordingly in `drizzle.config.ts`.
+
 ### Seeding Data
 
 For the purposes of testing the application, we are going to use seed data. This means that we don't need to manually write in content to the database before testing the application.
@@ -93,6 +99,8 @@ pnpm exec tsx scripts/seed-db.ts
 ```
 
 If this runs successfully, you should get the message `✅ Seeding complete`. Note that this command cannot be run multiple times because once data is already inserted, making any changes using the `INSERT` command will produce a duplicate entry error.
+
+To seed the database in the hosting platform, set the `DATABASE_URL` in the `.env` file to the URL of the SQL database. Then run the above command to seed the database.
 
 Note that Drizzle does not automatically create tables on seed. For this you need to run migrations. So, if you need to create tables again because the database changed, then run these commands:
 
@@ -176,6 +184,31 @@ to ensure that any fixes are carried through to the image.
 Note that the container is a **production container** so it will work **only if** the environment variable `NODE_ENV` is set to `production`. Development dependencies are not installed within the container because this increases image size.
 
 Since development dependencies are not in the container, the code is carefully crafted to ensure that none of the development dependencies (particularly `vite`) are bundled into `dist`.
+
+## Railway Hosting
+
+This app is hosted on Railway. Here are some of the key points to take note about the hosting:
+
+- The quickest way to understand the status of the hosting is through the GUI. Navigate to https://railway.app and navigate to the project.
+- The code is deployed through GitHub. This means that any change to this repo will automatically be refelcted in the applicaiton. Thus, be sure to ensure that proper testing is done before the app is pushed to the main branch (follow appropriate CI/CD practises).
+- Ensure that the envrionment variables are all correctly set. There are a few variables that change when hosted, including: `GOOGLE_OAUTH_REDIRECT_URI`.
+- Working with the database can be done in three ways:
+  - Use the GUI provided by Railway to manually manage tables (this is not recommended because it provides limited control)
+  - Use drizzle to manage the database by changing the `DATABSE_URL` envrionment variables on a local machine. Then the standard drizzle commands to update and seed the database can be used.
+  - Connect to the database from MySQL shell for full access, using the link provided by Railway.
+
+- The hosted app can also be managed using the Railway shell. These are the commands needed to set it up:ra
+
+  ```bash
+  # Install the railway CLI using npm
+  npm i -g @railway/cli
+
+  # Connect to the service that you want to work with
+  railway link
+  railway shell
+  ```
+
+- One useful command that can be used from the Railway CLI is `railway logs` to see the live logs from the Railway deployment.
 
 ## Taking this project forward
 
