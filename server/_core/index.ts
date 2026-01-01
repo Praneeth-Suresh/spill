@@ -53,10 +53,15 @@ async function startServer() {
     });
   });
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("=== DEVELOPMENT ENVIRONMENT ===");
+  }
+
   let server;
   if (
     process.env.RAILWAY_STATIC_URL ||
-    process.env.RAILWAY_ENVIRONMENT
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.NODE_ENV === "development"
   ) {
     server = http.createServer(app);
     console.log("Running on Railway: using HTTP server (Railway provides HTTPS)");

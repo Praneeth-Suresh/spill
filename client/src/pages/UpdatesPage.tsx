@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import PointsBadge from "@/components/PointsBadge";
+import Disclaimer from "@/components/Disclaimer";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-const FALLBACK_MESSAGE = "All your feedback has collected and is being processed. Magic is happening. We'll let you know when the results are ready.";
+const FALLBACK_MESSAGE = "All your feedback has collected and is being processed. Magic is happening! We'll let you know when the results are ready.";
 
 function formatDate(value: Date | string) {
   const date = new Date(value);
@@ -57,7 +57,7 @@ export default function UpdatesPage() {
         <p className="text-lg font-semibold leading-tight">See what&apos;s happening with your feedback.</p>
       </div>
 
-      <div className="spill-card">
+      <div className="spill-card space-y-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="italic font-semibold text-base">Updates</h3>
           {isLoading && (
@@ -65,7 +65,7 @@ export default function UpdatesPage() {
           )}
         </div>
 
-        <div className={cn("rounded-xl border border-black/40 bg-white px-4 py-3", "h-[420px] overflow-y-auto")}> 
+        <div className="h-[420px] overflow-y-auto">
           {showFallback ? (
             <div className="text-sm leading-relaxed">
               <Paragraphs text={FALLBACK_MESSAGE} />
@@ -73,8 +73,8 @@ export default function UpdatesPage() {
           ) : data ? (
             <div className="space-y-4">
               {data.map((update) => (
-                <div key={update.id} className="border border-black/40 rounded-xl p-4 shadow-sm bg-white">
-                  <div className="text-sm font-semibold mb-3">
+                <div key={update.id} className="pb-4 border-b border-black/15 last:border-none">
+                  <div className="text-sm font-semibold mb-2">
                     {formatDate(update.date)}, {update.person}
                   </div>
                   <div className="text-sm leading-relaxed">
@@ -93,6 +93,10 @@ export default function UpdatesPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
       </div>
     </div>
   );

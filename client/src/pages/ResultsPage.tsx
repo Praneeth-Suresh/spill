@@ -1,6 +1,8 @@
 import { useRoute, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import PointsBadge from "@/components/PointsBadge";
+import Disclaimer from "@/components/Disclaimer";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -52,15 +54,21 @@ export default function ResultsPage() {
 
   return (
     <div className="spill-mobile-card">
-      {/* Header */}
-      <div className="text-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">spill.</h1>
+        <PointsBadge />
       </div>
 
       {/* Title Card */}
       <div className="spill-card mb-6">
         <h2 className="text-2xl font-bold mb-2">Good spill.</h2>
         <p className="text-lg">See what's happening with your feedback.</p>
+      </div>
+      
+      {/* Total Responses */}
+      <div className="spill-card mb-6 text-center">
+        <div className="text-4xl font-bold mb-2">{stats.totalResponses}</div>
+        <div className="text-sm text-muted-foreground">Total responses received</div>
       </div>
 
       {/* Results Card - For Poll Questions */}
@@ -79,9 +87,9 @@ export default function ResultsPage() {
                     <span className="font-medium">{stat.optionText}</span>
                     <span className="text-sm text-muted-foreground">{stat.count}</span>
                   </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
+                  <div className="w-full bg-secondary rounded-[6px] h-2">
                     <div
-                      className="bg-primary h-2 rounded-full transition-all"
+                      className="bg-primary h-2 rounded-[6px] transition-all"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -109,12 +117,6 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Total Responses */}
-      <div className="spill-card mb-6 text-center">
-        <div className="text-4xl font-bold mb-2">{stats.totalResponses}</div>
-        <div className="text-sm text-muted-foreground">Total responses received</div>
-      </div>
-
       {/* Action Buttons */}
       <div className="space-y-3">
         <Button
@@ -132,19 +134,8 @@ export default function ResultsPage() {
         </Button>
       </div>
 
-      {/* Disclaimer */}
-      <div className="mt-6 spill-card">
-        <div className="flex items-start gap-2">
-          <div className="text-lg">ℹ️</div>
-          <div>
-            <h3 className="font-semibold mb-1">About Results</h3>
-            <p className="spill-disclaimer">
-              Results are updated in real-time as new responses come in. 
-              Your feedback helps us improve our facilities and services. 
-              Thank you for participating!
-            </p>
-          </div>
-        </div>
+      <div className="mt-6">
+        <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
       </div>
     </div>
   );

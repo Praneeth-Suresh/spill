@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import PointsBadge from "@/components/PointsBadge";
+import Disclaimer from "@/components/Disclaimer";
 
 /**
  * HomePage displays the generic feedback form (home question).
@@ -59,9 +60,9 @@ export default function HomePage() {
 
       {/* Feedback Card */}
       <div className="spill-card">
-        <h2 className="text-xl font-bold mb-4">Share your feedback</h2>
+        <h2 className="text-xl font-bold mb-4">Tell us anything!</h2>
         <p className="text-sm text-muted-foreground mb-6">
-          Tell us about your experience or report any issues
+          Your thoughts help us make this better.
         </p>
 
         <Textarea
@@ -118,18 +119,8 @@ export default function HomePage() {
       </div>
 
       {/* Disclaimer */}
-      <div className="mt-6 spill-card">
-        <div className="flex items-start gap-2">
-          <div className="text-lg">⚠️</div>
-          <div>
-            <h3 className="font-semibold mb-1">Disclaimer</h3>
-            <p className="spill-disclaimer">
-              This platform is for anonymous feedback. Your identity is protected and will not be shared. 
-              However, we log IP addresses for security, analytics, and troubleshooting purposes. 
-              The information you provide will be used to improve our facilities and services.
-            </p>
-          </div>
-        </div>
+      <div className="mt-6">
+        <Disclaimer />
       </div>
     </div>
   );

@@ -15,6 +15,8 @@ in `.env`. Otherwise, set it to `production`.
 To run the development server, use:
 
 ```bash
+npm install -g pnpm
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
@@ -28,7 +30,7 @@ This will:
 
 > [!WARNING]
 >
-> Always ensure that the database is set up before running the app.
+> Always ensure that the database is set up before running the app. If a local MySQL database cannot be setup in the local dev environment, use the MySQL server from Railway.
 
 HTTP is used in development mode so the cookies are not secure.
 
@@ -193,10 +195,10 @@ This app is hosted on Railway. Here are some of the key points to take note abou
 - The code is deployed through GitHub. This means that any change to this repo will automatically be refelcted in the applicaiton. Thus, be sure to ensure that proper testing is done before the app is pushed to the main branch (follow appropriate CI/CD practises).
 - Ensure that the envrionment variables are all correctly set. There are a few variables that change when hosted, including: `GOOGLE_OAUTH_REDIRECT_URI`.
 - Working with the database can be done in three ways:
+
   - Use the GUI provided by Railway to manually manage tables (this is not recommended because it provides limited control)
   - Use drizzle to manage the database by changing the `DATABSE_URL` envrionment variables on a local machine. Then the standard drizzle commands to update and seed the database can be used.
   - Connect to the database from MySQL shell for full access, using the link provided by Railway.
-
 - The hosted app can also be managed using the Railway shell. These are the commands needed to set it up:ra
 
   ```bash
@@ -207,8 +209,37 @@ This app is hosted on Railway. Here are some of the key points to take note abou
   railway link
   railway shell
   ```
-
 - One useful command that can be used from the Railway CLI is `railway logs` to see the live logs from the Railway deployment.
+
+## Adding questions
+
+Before creating a question, determine the following details.
+
+* Question Type: Choose from poll (single or multiple choice), text (open-ended feedback), fill_blanks (structured text input), or file_upload (evidence-based feedback).
+* Question Content: Write a clear, concise question title (max 500 characters), add optional description for context, and create placeholder text for input fields.
+* Navigation Flow: Decide where users go after submission (next question, home page, or results page), determine if branching logic is needed, and set the display order among other questions.
+* Validation Rules: Specify if the question is required or optional, set file size limits for uploads (default 10MB), and define allowed file types for uploads (e.g., "image/jpeg,image/png,application/pdf").
+
+There is an interactive CLI to add questions with optional poll options, type-aware prompts, and a confirmation gate before writing to the DB. Run it with:
+
+```bash
+pnpm tsx scripts/add-question.ts
+```
+
+Ensure that `DATABASE_URL` is set in `.env` before running this.
+
+To add a shortcut to your question on the home page, edit client/src/pages/HomePage.tsx:
+
+```typescript
+// Find the "Quick Feedback" section and add your button
+<Button
+  variant="outline"
+  className="w-full justify-start"
+  onClick={() => setLocation("/question/YOUR_QUESTION_ID")}
+>
+  🎬 Your Question Title
+</Button>
+```
 
 ## Taking this project forward
 

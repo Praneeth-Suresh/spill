@@ -1,6 +1,5 @@
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { CircleDollarSign } from "lucide-react";
 
 interface PointsBadgeProps {
   className?: string;
@@ -12,9 +11,9 @@ export function PointsBadge({ className }: PointsBadgeProps) {
   const points = pointsData?.points ?? fallback;
 
   return (
-    <div className={cn("bg-white border-2 border-black rounded-2xl px-4 py-2 shadow-sm flex items-center gap-3 min-w-[120px] justify-between", className)}>
-      <div className="flex items-center justify-center rounded-full border-2 border-black bg-primary h-9 w-9">
-        <CircleDollarSign className="h-5 w-5 text-black" />
+    <div className={cn("bg-white border-2 border-black rounded-lg px-4 py-2 shadow-sm flex items-center gap-3 min-w-[120px] justify-between", className)}>
+      <div className="flex items-center justify-center rounded-full border-2 border-black bg-primary text-black h-9 w-9 text-lg font-bold tracking-wide">
+        S
       </div>
       {isLoading ? (
         <div className="h-5 w-14 rounded bg-black/10 animate-pulse" />

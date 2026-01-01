@@ -8,6 +8,8 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import type { TrpcContext } from "./_core/context";
+import { responses } from "../drizzle/schema";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * Admin-only procedure that checks if user has admin or super_admin role.
@@ -227,6 +229,26 @@ export const appRouter = router({
         });
 
         return { fileId: file.insertId, fileUrl: url };
+      }),
+
+    /**
+     * Get response count for a question.
+     */
+    getResponseCount: publicProcedure
+      .input(z.object({ questionId: z.number() }))
+      .query(async ({ input }) => {
+        const dbInstance = await db.getDb();
+        if (!dbInstance) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        }
+
+        const result = await dbInstance
+          .select({ count: sql<number>`count(*)` })
+          .from(responses)
+          .where(eq(responses.questionId, input.questionId));
+
+        const count = Number(result[0]?.count ?? 0);
+        return { count };
       }),
   }),
 
