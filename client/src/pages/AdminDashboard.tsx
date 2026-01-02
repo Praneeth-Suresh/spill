@@ -125,7 +125,7 @@ export default function AdminDashboard() {
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">spill.</h1>
+              <a href="/" className="text-2xl font-bold hover:underline">spill.</a>
               <p className="text-sm text-muted-foreground">
                 Welcome back, {user.name || 'Admin'}
               </p>

@@ -64,7 +64,7 @@ Here are the key pieces of information that the database is designed to store:
 - Response answers store individual answer data.
 - Uploaded files track file metadata and S3 references.
 - Question branching defines conditional navigation rules.
-- Updates store the public activity feed (date, person, content blob, relevance). Content uses double newlines (`\n\n`) to delimit paragraphs for display.
+- Updates store the public activity feed (date, person, content blob, and a question mapping stored in `relevance`). Content uses double newlines (`\n\n`) to delimit paragraphs for display.
 
 Each of the above sets of data corresponds to a table.
 
@@ -114,8 +114,9 @@ pnpm exec drizzle-kit migrate
 ### Manual data entry for updates
 
 - `content` should use double newlines (`\n\n`) between paragraphs; each paragraph is rendered separately.
-- `relevance` is an integer 1–10; the top three scores (ties broken by most recent `date`) are shown on `/updates`.
-- Use the same date format as other tables (timestamp); local server time is used for “today” checks.
+- `relevance` now stores the related question ID (or `NULL`/`0` for general updates). Question-specific results filter on this field; the general results landing page shows the latest three updates regardless of question.
+- Updates are ordered by the `date` column (newest first); local server time is used for “today” checks on the gated `/updates` page.
+- No schema change was needed for this repurpose, but keep values aligned to existing `questions.id` to avoid orphaned updates.
 
 ## Running Tests
 
@@ -228,6 +229,8 @@ pnpm tsx scripts/add-question.ts
 
 Ensure that `DATABASE_URL` is set in `.env` before running this.
 
+### Add as shortcut!
+
 To add a shortcut to your question on the home page, edit client/src/pages/HomePage.tsx:
 
 ```typescript
@@ -240,6 +243,18 @@ To add a shortcut to your question on the home page, edit client/src/pages/HomeP
   🎬 Your Question Title
 </Button>
 ```
+
+Prioritize this for general but important questions.
+
+### Tips for using the add-question CLI
+
+- Create later steps first: if you plan a chain, add the downstream questions before the upstream ones so you can set `nextQuestionId` easily.
+- The CLI now lists facilities up front—pick the correct facility ID from that list to avoid misplacing questions.
+- When choosing a `nextQuestionId`, the CLI prints all existing questions for reference. (A scrollable window feature is planned for the future.)
+- The tool previews the next question auto-increment ID before inserting; keep it handy for navigation or shortcuts.
+
+**Note:**
+The scrollable question list (with arrow key navigation) is commented out in the code for now due to terminal compatibility issues. If you want this feature, watch for future updates or contribute improvements!
 
 ## Taking this project forward
 

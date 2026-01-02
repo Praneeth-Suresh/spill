@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import PointsBadge from "@/components/PointsBadge";
 import Disclaimer from "@/components/Disclaimer";
+import UpdatesCard from "@/components/UpdatesCard";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
 
@@ -32,10 +33,18 @@ function Paragraphs({ text }: { text: string }) {
 }
 
 export default function UpdatesPage() {
+  const [, params] = useRoute("/updates/:id");
   const [, setLocation] = useLocation();
-  const { data, isLoading, isError, error } = trpc.updates.top.useQuery(undefined, {
+  const questionId = params?.id ? parseInt(params.id) : null;
+
+  const { data: topUpdates, isLoading, isError, error } = trpc.updates.top.useQuery(undefined, {
     retry: 1,
   });
+
+  const { data: questionUpdates, isLoading: questionUpdatesLoading } = trpc.updates.byQuestion.useQuery(
+    { questionId: questionId!, limit: 5 },
+    { enabled: !!questionId }
+  );
 
   useEffect(() => {
     if (error?.data?.code === "FORBIDDEN") {
@@ -48,7 +57,7 @@ export default function UpdatesPage() {
   return (
     <div className="spill-mobile-card">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">spill.</h1>
+        <a href="/" className="text-3xl font-bold hover:underline">spill.</a>
         <PointsBadge />
       </div>
 
@@ -57,9 +66,29 @@ export default function UpdatesPage() {
         <p className="text-lg font-semibold leading-tight">See what&apos;s happening with your feedback.</p>
       </div>
 
+      {/* Question-specific updates card */}
+      <div className="mb-6">
+        {questionId ? (
+          <UpdatesCard
+            title="Updates for this question"
+            updates={questionUpdates}
+            isLoading={questionUpdatesLoading && !questionUpdates}
+            emptyText="No updates for this question yet."
+          />
+        ) : (
+          <div className="spill-card">
+            <h3 className="font-semibold mb-2">Question-specific updates</h3>
+            <p className="text-sm text-muted-foreground">
+              Open a question and submit a response to see its updates here.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* General updates card */}
       <div className="spill-card space-y-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="italic font-semibold text-base">Updates</h3>
+          <h3 className="italic font-semibold text-base">Elsewhere on spill</h3>
           {isLoading && (
             <Loader2 className="h-5 w-5 animate-spin text-black" aria-label="Loading updates" />
           )}
@@ -70,9 +99,9 @@ export default function UpdatesPage() {
             <div className="text-sm leading-relaxed">
               <Paragraphs text={FALLBACK_MESSAGE} />
             </div>
-          ) : data ? (
+          ) : topUpdates ? (
             <div className="space-y-4">
-              {data.map((update) => (
+              {topUpdates.map((update) => (
                 <div key={update.id} className="pb-4 border-b border-black/15 last:border-none">
                   <div className="text-sm font-semibold mb-2">
                     {formatDate(update.date)}, {update.person}

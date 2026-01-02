@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import PointsBadge from "@/components/PointsBadge";
 import Disclaimer from "@/components/Disclaimer";
+import UpdatesCard from "@/components/UpdatesCard";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -15,6 +16,7 @@ export default function ResultsPage() {
   const [, params] = useRoute("/results/:id");
   const [, setLocation] = useLocation();
   const questionId = params?.id ? parseInt(params.id) : null;
+  const hasQuestionContext = Number.isFinite(questionId);
 
   const { data: questionData, isLoading: questionLoading } = trpc.questions.getById.useQuery(
     { id: questionId! },
@@ -30,6 +32,50 @@ export default function ResultsPage() {
     { questionId: questionId!, limit: 5 },
     { enabled: !!questionId && questionData?.question.type !== 'poll' }
   );
+
+  const { data: questionUpdates, isLoading: questionUpdatesLoading } = trpc.updates.byQuestion.useQuery(
+    { questionId: questionId!, limit: 5 },
+    { enabled: !!questionId }
+  );
+
+  const { data: latestUpdates, isLoading: latestUpdatesLoading } = trpc.updates.latest.useQuery(
+    { limit: 3 },
+    { enabled: !questionId }
+  );
+
+  if (!hasQuestionContext) {
+    return (
+      <div className="spill-mobile-card">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">spill.</h1>
+          <PointsBadge />
+        </div>
+
+        <div className="spill-card mb-6">
+          <h2 className="text-2xl font-bold mb-2">Good spill.</h2>
+          <p className="text-lg">Latest results and updates.</p>
+        </div>
+
+        <div className="spill-card mb-6">
+          <UpdatesCard
+            title="Newest updates"
+            updates={latestUpdates}
+            isLoading={latestUpdatesLoading && !latestUpdates}
+            emptyText="No updates are available yet."
+            showQuestionTag
+          />
+        </div>
+
+        <Button onClick={() => setLocation("/")} className="spill-button w-full mb-3">
+          Back to Home
+        </Button>
+
+        <div className="mt-6">
+          <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
+        </div>
+      </div>
+    );
+  }
 
   if (questionLoading || statsLoading) {
     return (
@@ -55,7 +101,7 @@ export default function ResultsPage() {
   return (
     <div className="spill-mobile-card">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">spill.</h1>
+        <a href="/" className="text-3xl font-bold hover:underline">spill.</a>
         <PointsBadge />
       </div>
 
@@ -99,6 +145,13 @@ export default function ResultsPage() {
           </div>
         </div>
       )}
+
+      <UpdatesCard
+        title="Updates for this question"
+        updates={questionUpdates}
+        isLoading={questionUpdatesLoading && !questionUpdates}
+        emptyText="No updates for this question yet."
+      />
 
       {/* Updates Card - For Text Questions */}
       {question.type !== 'poll' && recentResponses && recentResponses.length > 0 && (

@@ -564,13 +564,33 @@ export async function exportResponses(
 /**
  * Fetch top updates ordered by relevance then most recent date.
  */
-export async function getTopUpdates(limit: number = 3): Promise<Update[]> {
+export async function getLatestUpdates(limit: number = 3): Promise<Update[]> {
   const db = await getDb();
   if (!db) return [];
 
   return db
     .select()
     .from(updates)
-    .orderBy(desc(updates.relevance), desc(updates.date))
+    .orderBy(desc(updates.date), desc(updates.id))
     .limit(limit);
+}
+
+export async function getUpdatesByQuestion(questionId: number, limit: number = 5): Promise<Update[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(updates)
+    .where(eq(updates.relevance, questionId))
+    .orderBy(desc(updates.date), desc(updates.id))
+    .limit(limit);
+}
+
+/**
+ * Legacy helper retained for compatibility. Delegates to getLatestUpdates
+ * now that `relevance` is repurposed as questionId.
+ */
+export async function getTopUpdates(limit: number = 3): Promise<Update[]> {
+  return getLatestUpdates(limit);
 }

@@ -59,6 +59,14 @@ async function resolvePointsSnapshot(ctx: TrpcContext) {
   return { source: 'default' as const, points: DEFAULT_POINTS };
 }
 
+const serializeUpdate = (item: { id: number; date: Date; person: string; content: string; relevance: number | null }) => ({
+  id: item.id,
+  date: item.date,
+  person: item.person,
+  questionId: item.relevance ?? null,
+  paragraphs: item.content.split(/\n\n+/).filter(Boolean),
+});
+
 export const appRouter = router({
   system: systemRouter,
   
@@ -276,7 +284,7 @@ export const appRouter = router({
 
   updates: router({
     /**
-     * Fetch top relevant updates for the feed. Requires that the requester has answered today.
+     * Fetch newest updates for the feed. Requires that the requester has answered today.
      */
     top: publicProcedure.query(async ({ ctx }) => {
       if (!ctx.ipAddress) {
@@ -288,16 +296,36 @@ export const appRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'No recent activity' });
       }
 
-      const items = await db.getTopUpdates();
+      const items = await db.getLatestUpdates();
 
-      return items.map(item => ({
-        id: item.id,
-        date: item.date,
-        person: item.person,
-        relevance: item.relevance,
-        paragraphs: item.content.split(/\n\n+/).filter(Boolean),
-      }));
+      return items.map(serializeUpdate);
     }),
+
+    /**
+     * Fetch updates scoped to a specific question by storing its id in the relevance column.
+     */
+    byQuestion: publicProcedure
+      .input(z.object({
+        questionId: z.number(),
+        limit: z.number().min(1).max(50).default(5),
+      }))
+      .query(async ({ input }) => {
+        const items = await db.getUpdatesByQuestion(input.questionId, input.limit);
+
+        return items.map(serializeUpdate);
+      }),
+
+    /**
+     * Fetch the newest updates without gating; used for general results landing page.
+     */
+    latest: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(50).default(3) }).optional())
+      .query(async ({ input }) => {
+        const limit = input?.limit ?? 3;
+        const items = await db.getLatestUpdates(limit);
+
+        return items.map(serializeUpdate);
+      }),
   }),
 
   /**

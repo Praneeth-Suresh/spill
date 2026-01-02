@@ -118,7 +118,7 @@ export default function FacilityDashboard() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">{facility.name}</h1>
+                <a href="/" className="text-2xl font-bold hover:underline">spill.</a>
               <p className="text-sm text-muted-foreground">{facility.description}</p>
             </div>
           </div>

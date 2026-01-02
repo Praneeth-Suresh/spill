@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +41,7 @@ export default function QuestionPage() {
       if (data.nextQuestionId) {
         setLocation(`/question/${data.nextQuestionId}`);
       } else if (data.redirectToHome) {
-        setLocation("/updates");
+        setLocation(`/updates/${questionData?.question.id}`);
       } else {
         setLocation("/results/" + questionData?.question.id);
       }
@@ -170,7 +170,7 @@ export default function QuestionPage() {
   return (
     <div className="spill-mobile-card">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">spill.</h1>
+        <a href="/" className="text-3xl font-bold hover:underline">spill.</a>
         <PointsBadge />
       </div>
 
