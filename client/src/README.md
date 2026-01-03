@@ -45,6 +45,36 @@ The files in the lib folder provide utility functions and libraries that support
 - `trpc.ts`: Sets up type-safe tRPC React hooks for communicating with the backend API. It allows frontend components to easily call backend procedures (like [trpc.auth.me.useQuery()](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html)) with full TypeScript type inference, ensuring type safety and reducing boilerplate.
 - `utils.ts`: Exports a utility function [cn](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) that combines and merges CSS class names using [clsx](vscode-file://vscode-app/c:/Users/prane/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) and `tailwind-merge`. This helps manage dynamic and conditional Tailwind CSS class names in a clean and conflict-free way.
 
+## `src/components`
+
+### `UpdatesCard`
+
+The `UpdatesCard` component (see `src/components/UpdatesCard.tsx`) is a reusable card for displaying updates from the database. It is used on both the Results and Updates pages to show updates either for a specific question or in general. The card supports loading states, empty states, and can optionally display the question number associated with each update.
+
+**Usage:**
+
+- On the Results page, it displays updates relevant to the question the user just answered.
+- On the Updates page, it can show updates for a specific question if navigated from a question context, or general updates otherwise.
+
+**Props:**
+
+- `title`: Card title.
+- `updates`: Array of update items.
+- `isLoading`: Show loading spinner.
+- `emptyText`: Message if no updates.
+- `showQuestionTag`: Show question number tag.
+- `className`: Extra CSS classes.
+
+This component is used for the following pages:
+
+**Updates Page**
+
+The Updates page now supports showing updates scoped to a specific question if the user navigates from a question context. This is achieved by passing the question ID and using the shared `UpdatesCard` component to render only updates relevant to that question.
+
+**Results Page**
+
+The Results page uses the same `UpdatesCard` to show updates for the question just answered.
+
 # Authentication
 
 Across the applicaiton, authentication involves:

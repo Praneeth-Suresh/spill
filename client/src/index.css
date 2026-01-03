@@ -52,7 +52,9 @@
   --chart-3: oklch(0.75 0.19 127);
   --chart-4: oklch(0.65 0.16 127);
   --chart-5: oklch(0.55 0.13 127);
-  --radius: 0.65rem;
+  --radius: 10px;
+    --corner-radius: 10px;
+    --card-radius: 8px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.235 0.015 65);
   --card: oklch(1 0 0);
@@ -179,14 +181,16 @@
 @layer components {
   /* Spill card with rounded corners and bold border */
   .spill-card {
-    @apply bg-white rounded-3xl shadow-lg border-2 border-black p-6;
+    @apply bg-white shadow-lg border-2 border-black p-6;
+      border-radius: var(--corner-radius);
   }
   
   /* Lime green background for brand sections - use bg-primary instead */
   
   /* White input box style as per design mockups */
   .spill-input-box {
-    @apply bg-white rounded-2xl border-2 border-black p-4 w-full;
+    @apply bg-white border-2 border-black p-4 w-full;
+      border-radius: var(--corner-radius);
   }
   
   /* Black button style for CTAs */
@@ -196,13 +200,19 @@
   
   /* Poll option button style */
   .spill-option {
-    @apply bg-black text-white rounded-full px-6 py-3 font-medium hover:bg-black/90 transition-colors cursor-pointer text-center;
+    @apply bg-black text-white px-6 py-3 font-medium hover:bg-black/90 transition-colors cursor-pointer text-center;
+      border-radius: 12px;
   }
   
   /* Disclaimer text style */
   .spill-disclaimer {
-    @apply text-xs text-black/60 leading-relaxed;
-  }
+    @apply text-xs text-black/30 leading-relaxed;
+    }
+    
+    .spill-disclaimer-shell {
+      @apply border border-black/60 bg-white/60 p-4 flex gap-3 items-start;
+      border-radius: 10px;
+    }
   
   /* Mobile-optimized card container */
   .spill-mobile-card {

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import PointsBadge from "@/components/PointsBadge";
+import Disclaimer from "@/components/Disclaimer";
 
 /**
  * QuestionPage displays a single question and handles user responses.
@@ -26,6 +28,11 @@ export default function QuestionPage() {
     { enabled: !!questionId }
   );
 
+  const { data: responseCountData, isLoading: isCountLoading } = trpc.questions.getResponseCount.useQuery(
+    { questionId: questionId! },
+    { enabled: !!questionId }
+  );
+
   const submitMutation = trpc.questions.submit.useMutation({
     onSuccess: (data) => {
       toast.success("Thank you for your feedback!");
@@ -34,7 +41,7 @@ export default function QuestionPage() {
       if (data.nextQuestionId) {
         setLocation(`/question/${data.nextQuestionId}`);
       } else if (data.redirectToHome) {
-        setLocation("/updates");
+        setLocation(`/updates/${questionData?.question.id}`);
       } else {
         setLocation("/results/" + questionData?.question.id);
       }
@@ -162,44 +169,60 @@ export default function QuestionPage() {
 
   return (
     <div className="spill-mobile-card">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold">spill.</h1>
+      <div className="flex items-center justify-between mb-6">
+        <a href="/" className="text-3xl font-bold hover:underline">spill.</a>
+        <PointsBadge />
       </div>
 
-      {/* Question Card */}
-      <div className="spill-card">
-        {/* Facility label */}
-        <div className="text-sm font-medium mb-4">{question.facilityId === 1 ? 'Oasis' : 'Facility'}</div>
+      <div className="spill-card space-y-4 text-center max-w-xl mx-auto">
+        <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          {question.facilityId === 1 ? 'Oasis' : 'Facility'}
+        </div>
 
-        {/* Question title */}
-        <h2 className="text-xl font-bold mb-4">{question.title}</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold leading-tight">{question.title}</h2>
 
-        {/* Question description */}
         {question.description && (
-          <p className="text-sm text-muted-foreground mb-6">{question.description}</p>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">{question.description}</p>
         )}
 
-        {/* Poll options */}
+        {/* Poll options: auto-submit on click */}
         {question.type === 'poll' && (
-          <div className="space-y-3 mb-6">
-            {options.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => handleOptionToggle(option.id)}
-                className={`spill-option w-full ${
-                  selectedOptions.includes(option.id) ? 'ring-2 ring-primary' : ''
-                }`}
-              >
-                {option.optionText}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="space-y-3 mb-6 max-w-md mx-auto w-full">
+              {options.map((option) => (
+                <button
+                  key={option.id}
+                  disabled={isSubmitting}
+                  className={`spill-option w-full ${selectedOptions.includes(option.id) ? 'ring-2 ring-primary' : ''}`}
+                  onClick={async () => {
+                    handleOptionToggle(option.id);
+                    setTimeout(() => {
+                      submitMutation.mutate({
+                        questionId: question.id,
+                        facilityId: question.facilityId,
+                        answers: [{ optionId: option.id }],
+                      });
+                    }, 0);
+                  }}
+                >
+                  {option.optionText}
+                </button>
+              ))}
+            </div>
+            {isSubmitting && (
+              <div className="mt-4 flex justify-center">
+                <span className="inline-flex items-center px-4 py-2 text-sm font-medium text-muted-foreground">
+                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                  Submitting...
+                </span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Text input */}
-        {(question.type === 'text' || question.type === 'fill_blanks') && (
-          <div className="mb-6">
+        {(question.type === 'text') && (
+          <div className="mb-6 max-w-md mx-auto w-full">
             <Textarea
               placeholder={question.placeholder || "Type your answer here..."}
               value={textAnswer}
@@ -209,9 +232,35 @@ export default function QuestionPage() {
           </div>
         )}
 
+        {/* Fill-in-the-blanks input */}
+        {(question.type === 'fill_blanks') && (
+          <div className="mb-6 max-w-md mx-auto w-full">
+            <Input
+              type="text"
+              placeholder={question.placeholder || "Type your answer here..."}
+              value={textAnswer}
+              maxLength={64}
+              onChange={(e) => {
+                const value = e.target.value;
+                const words = value.trim().split(/\s+/);
+                if (words.length <= 2) {
+                  setTextAnswer(value);
+                } else {
+                  setTextAnswer(words.slice(0, 2).join(' '));
+                }
+              }}
+              className="spill-input-box"
+              style={{ resize: 'none' }}
+            />
+            <div className="text-xs text-muted-foreground mt-1 text-right">
+              {textAnswer.trim().split(/\s+/).filter(Boolean).length}/2 words
+            </div>
+          </div>
+        )}
+
         {/* File upload */}
         {question.type === 'file_upload' && (
-          <div className="mb-6">
+          <div className="mb-6 max-w-md mx-auto w-full text-left">
             <Input
               type="file"
               onChange={handleFileChange}
@@ -226,45 +275,34 @@ export default function QuestionPage() {
           </div>
         )}
 
-        {/* Submit button */}
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="spill-button w-full"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin mr-2 h-4 w-4" />
-              Submitting...
-            </>
-          ) : (
-            "spill now."
-          )}
-        </Button>
+        {/* Submit button: only for non-poll questions */}
+        {(question.type !== 'poll') && (
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="spill-button w-full max-w-md mx-auto"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                Submitting...
+              </>
+            ) : (
+              "spill now."
+            )}
+          </Button>
+        )}
 
         {/* Response count */}
-        <div className="text-center text-sm text-muted-foreground mt-4">
-          {Math.floor(Math.random() * 100)} others have spilled.
+        <div className="text-center text-sm text-muted-foreground mt-2">
+          <span className={isCountLoading ? "opacity-0 transition-opacity" : "opacity-100 transition-opacity"}>
+            {responseCountData?.count ?? 0} others have spilled.
+          </span>
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="mt-6 spill-card">
-        <div className="flex items-start gap-2">
-          <div className="text-lg">⚠️</div>
-          <div>
-            <h3 className="font-semibold mb-1">Disclaimer</h3>
-            <p className="spill-disclaimer">
-              This platform is for anonymous feedback. Your identity is protected and will not be shared. 
-              However, we log IP addresses for security, analytics, and troubleshooting purposes. 
-              The information you provide will be used to improve our facilities and services. 
-              Please be respectful and constructive in your feedback. 
-              Any abusive or inappropriate content will be removed. 
-              By submitting, you acknowledge that your feedback may be shared with facility managers 
-              and staff for improvement purposes.
-            </p>
-          </div>
-        </div>
+      <div className="mt-6">
+        <Disclaimer />
       </div>
     </div>
   );
