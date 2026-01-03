@@ -221,7 +221,7 @@ export default function QuestionPage() {
         )}
 
         {/* Text input */}
-        {(question.type === 'text' || question.type === 'fill_blanks') && (
+        {(question.type === 'text') && (
           <div className="mb-6 max-w-md mx-auto w-full">
             <Textarea
               placeholder={question.placeholder || "Type your answer here..."}
@@ -229,6 +229,32 @@ export default function QuestionPage() {
               onChange={(e) => setTextAnswer(e.target.value)}
               className="spill-input-box min-h-[120px]"
             />
+          </div>
+        )}
+
+        {/* Fill-in-the-blanks input */}
+        {(question.type === 'fill_blanks') && (
+          <div className="mb-6 max-w-md mx-auto w-full">
+            <Input
+              type="text"
+              placeholder={question.placeholder || "Type your answer here..."}
+              value={textAnswer}
+              maxLength={64}
+              onChange={(e) => {
+                const value = e.target.value;
+                const words = value.trim().split(/\s+/);
+                if (words.length <= 2) {
+                  setTextAnswer(value);
+                } else {
+                  setTextAnswer(words.slice(0, 2).join(' '));
+                }
+              }}
+              className="spill-input-box"
+              style={{ resize: 'none' }}
+            />
+            <div className="text-xs text-muted-foreground mt-1 text-right">
+              {textAnswer.trim().split(/\s+/).filter(Boolean).length}/2 words
+            </div>
           </div>
         )}
 

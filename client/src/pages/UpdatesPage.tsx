@@ -17,10 +17,12 @@ function formatDate(value: Date | string) {
   });
 }
 
-function Paragraphs({ text }: { text: string }) {
+export function Paragraphs({ text }: { text: string }) {
+  // Convert literal "\n" to actual newlines
+  const normalized = text.replace(/\\n/g, "\n");
   return (
     <>
-      {text
+      {normalized
         .split(/\n\n+/)
         .filter(Boolean)
         .map((chunk, idx) => (
@@ -62,8 +64,7 @@ export default function UpdatesPage() {
       </div>
 
       <div className="mb-5">
-        <h2 className="text-2xl font-bold leading-tight">Good spill.</h2>
-        <p className="text-lg font-semibold leading-tight">See what&apos;s happening with your feedback.</p>
+        <h2 className="text-2xl font-bold leading-tight">Good spill!</h2>
       </div>
 
       {/* Question-specific updates card */}
@@ -107,11 +108,12 @@ export default function UpdatesPage() {
                     {formatDate(update.date)}, {update.person}
                   </div>
                   <div className="text-sm leading-relaxed">
-                    {update.paragraphs.map((para, idx) => (
-                      <p key={idx} className={idx === 0 ? "" : "mt-3"}>
-                        {para}
-                      </p>
-                    ))}
+                    <Paragraphs text={typeof update.paragraphs === "string"
+                      ? update.paragraphs
+                      : Array.isArray(update.paragraphs)
+                        ? update.paragraphs.join("\n\n")
+                        : ""}
+                    />
                   </div>
                 </div>
               ))}

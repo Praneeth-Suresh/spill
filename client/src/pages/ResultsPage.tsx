@@ -146,12 +146,7 @@ export default function ResultsPage() {
         </div>
       )}
 
-      <UpdatesCard
-        title="Updates for this question"
-        updates={questionUpdates}
-        isLoading={questionUpdatesLoading && !questionUpdates}
-        emptyText="No updates for this question yet."
-      />
+
 
       {/* Updates Card - For Text Questions */}
       {question.type !== 'poll' && recentResponses && recentResponses.length > 0 && (
@@ -169,6 +164,15 @@ export default function ResultsPage() {
           </div>
         </div>
       )}
+
+      <div className="mb-6">
+        <UpdatesCard
+          title="Updates for this question"
+          updates={questionUpdates}
+          isLoading={questionUpdatesLoading && !questionUpdates}
+          emptyText="No updates for this question yet."
+        />
+      </div>
 
       {/* Action Buttons */}
       <div className="space-y-3">

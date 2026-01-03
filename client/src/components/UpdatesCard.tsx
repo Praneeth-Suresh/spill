@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { Paragraphs } from "@/pages/UpdatesPage";
 
 /**
  * UpdatesCard is a reusable component for displaying a list of updates.
@@ -73,9 +74,7 @@ export function UpdatesCard({
                 {showQuestionTag && update.questionId ? ` (Q${update.questionId})` : ""}
               </div>
               <div className="space-y-3 text-sm leading-relaxed">
-                {update.paragraphs.map((para, idx) => (
-                  <p key={idx}>{para}</p>
-                ))}
+                <Paragraphs text={typeof update.paragraphs === "string" ? update.paragraphs : update.paragraphs.join("\n\n")} />
               </div>
             </div>
           ))}
