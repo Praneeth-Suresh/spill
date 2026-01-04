@@ -35,14 +35,30 @@ export async function oauthCallbackHandler(req: Request, res: Response) {
       return;
     }
 
-    // 3) Upsert local user record
-    await db.upsertUser({
-      openId: userInfo.sub,
-      name: userInfo.name || null,
-      email: userInfo.email ?? null,
-      loginMethod: "google",
-      lastSignedIn: new Date(),
-    });
+    // 3) Check for existing user by email
+    let existingUser = null;
+    if (userInfo.email) {
+      existingUser = await db.getUserByEmail?.(userInfo.email);
+    }
+
+    if (existingUser) {
+      // Update all fields except email and role
+      await db.updateUserById?.(existingUser.id, {
+        openId: userInfo.sub,
+        name: userInfo.name || null,
+        loginMethod: "google",
+        lastSignedIn: new Date(),
+      });
+    } else {
+      // Upsert local user record (create new)
+      await db.upsertUser({
+        openId: userInfo.sub,
+        name: userInfo.name || null,
+        email: userInfo.email ?? null,
+        loginMethod: "google",
+        lastSignedIn: new Date(),
+      });
+    }
 
     // 4) Create session token and set cookie
     const sessionToken = await sdk.createSessionToken(userInfo.sub, {

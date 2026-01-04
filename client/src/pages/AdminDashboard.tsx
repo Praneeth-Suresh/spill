@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Download, LogOut } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Download, LogOut, Maximize2, ImageDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
+import { QRCodeCanvas } from "qrcode.react";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../server/routers";
+
+type FacilityQuestion = inferRouterOutputs<AppRouter>["admin"]["getFacilityQuestions"][number];
 
 /**
  * AdminDashboard displays aggregated feedback statistics and analytics.
@@ -20,6 +25,15 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('week');
+  const [visibleQuestionCount, setVisibleQuestionCount] = useState(10);
+  const [qrPreviewQuestion, setQrPreviewQuestion] = useState<FacilityQuestion | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [qrReady, setQrReady] = useState(false);
+  const [qrDownloadUrl, setQrDownloadUrl] = useState<string | null>(null);
+
+  const domain = (import.meta.env.VITE_DOMAIN as string | undefined)?.replace(/\/$/, "") || window.location.origin;
+  const buildResultsUrl = (questionId: number) => `${domain}/results/${questionId}`;
 
   const { data: facilities, isLoading: facilitiesLoading } = trpc.admin.getFacilities.useQuery(undefined, {
     enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
@@ -27,6 +41,11 @@ export default function AdminDashboard() {
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getFacilityStats.useQuery(
     { facilityId: selectedFacilityId!, timeRange },
+    { enabled: !!selectedFacilityId }
+  );
+
+  const { data: facilityQuestions, isLoading: questionsLoading, isFetching: questionsFetching } = trpc.admin.getFacilityQuestions.useQuery(
+    { facilityId: selectedFacilityId! },
     { enabled: !!selectedFacilityId }
   );
 
@@ -54,6 +73,21 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     await logout();
     setLocation("/");
+  };
+
+  const handleOpenQr = (question: FacilityQuestion) => {
+    setQrPreviewQuestion(question);
+    setIsQrModalOpen(true);
+  };
+
+  const handleDownloadQr = () => {
+    const dataUrl = qrDownloadUrl || qrCanvasRef.current?.toDataURL("image/png");
+    if (!dataUrl || !qrPreviewQuestion) return;
+
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `spill_${qrPreviewQuestion.id}_QR.png`;
+    link.click();
   };
 
   const handleExport = (format: 'csv' | 'json') => {
@@ -114,9 +148,37 @@ export default function AdminDashboard() {
   }
 
   // Auto-select first facility if available
-  if (facilities && facilities.length > 0 && !selectedFacilityId) {
-    setSelectedFacilityId(facilities[0].id);
-  }
+  useEffect(() => {
+    if (facilities && facilities.length > 0 && !selectedFacilityId) {
+      setSelectedFacilityId(facilities[0].id);
+    }
+  }, [facilities, selectedFacilityId]);
+
+  // Reset question list and modal when facility changes
+  useEffect(() => {
+    setVisibleQuestionCount(10);
+    setQrPreviewQuestion(null);
+    setIsQrModalOpen(false);
+  }, [selectedFacilityId]);
+
+  // Prepare QR download once the modal canvas is ready
+  useEffect(() => {
+    if (!isQrModalOpen || !qrPreviewQuestion) {
+      setQrReady(false);
+      setQrDownloadUrl(null);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const canvas = qrCanvasRef.current;
+      if (canvas) {
+        setQrReady(true);
+        setQrDownloadUrl(canvas.toDataURL("image/png"));
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [isQrModalOpen, qrPreviewQuestion]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,25 +201,30 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="container py-8">
+      <div className="container py-8 max-w-6xl">
         {/* Facility Selector */}
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Select Facility</CardTitle>
-            <CardDescription>
-              {user.role === 'super_admin' 
-                ? 'You have access to all facilities' 
-                : 'Select from your assigned facilities'}
-            </CardDescription>
+          <CardHeader className="gap-2 md:flex md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-xl">Select Facility</CardTitle>
+              <CardDescription>
+                {user.role === 'super_admin'
+                  ? 'You have access to all facilities'
+                  : 'Select from your assigned facilities'}
+              </CardDescription>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {facilitiesLoading ? 'Loading facilities…' : `${facilities?.length ?? 0} available`}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
+            <div className="grid gap-4 md:grid-cols-[1.5fr,1fr]">
               <Select
                 value={selectedFacilityId?.toString()}
                 onValueChange={(value) => setSelectedFacilityId(parseInt(value))}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a facility" />
+                <SelectTrigger className="h-12 text-base">
+                  <SelectValue placeholder="Choose a facility" />
                 </SelectTrigger>
                 <SelectContent>
                   {facilities?.map((facility) => (
@@ -167,16 +234,21 @@ export default function AdminDashboard() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={timeRange} onValueChange={(value: any) => setTimeRange(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid gap-2 md:grid-cols-2">
+                <Select value={timeRange} onValueChange={(value: any) => setTimeRange(value)}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" className="h-12" onClick={() => refetchStats()}>
+                  Refresh Stats
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -239,6 +311,57 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
+            {/* Questions slider */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Questions</CardTitle>
+                <CardDescription>
+                  Swipe across to see questions for this facility. Inactive questions are grayed out.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(questionsLoading || questionsFetching) && (
+                  <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <div key={idx} className="w-64 flex-shrink-0 rounded-xl border bg-muted/40 animate-pulse h-[260px]" />
+                    ))}
+                  </div>
+                )}
+
+                {facilityQuestions && facilityQuestions.length > 0 && (
+                  <div className="-mx-2 overflow-x-auto pb-2">
+                    <div className="flex gap-4 px-2">
+                      {facilityQuestions.slice(0, visibleQuestionCount).map((question, index) => (
+                        <QuestionCard
+                          key={question.id}
+                          question={question}
+                          index={index}
+                          resultsUrl={buildResultsUrl(question.id)}
+                          onViewResults={() => setLocation(`/results/${question.id}`)}
+                          onOpenQr={() => handleOpenQr(question)}
+                        />
+                      ))}
+
+                      {(facilityQuestions.length > visibleQuestionCount) && (
+                        <Card className="flex w-48 flex-shrink-0 items-center justify-center border-dashed">
+                          <CardContent className="flex w-full flex-col items-center justify-center gap-3 p-4">
+                            <p className="text-center text-sm text-muted-foreground">Load 10 more questions</p>
+                            <Button variant="outline" onClick={() => setVisibleQuestionCount((prev) => prev + 10)}>
+                              Load more
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!questionsLoading && facilityQuestions?.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No questions found for this facility.</div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Export Actions */}
             <Card>
               <CardHeader>
@@ -276,7 +399,8 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Quick Links */}
-            <Card>
+            {/* Later enable this feature only to be used by super admins */}
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
@@ -305,7 +429,7 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         )}
 
@@ -317,6 +441,102 @@ export default function AdminDashboard() {
           </Card>
         )}
       </div>
+
+      <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Question QR</DialogTitle>
+            <DialogDescription>
+              Scan or download the QR to open the results page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-lg border p-4">
+              {qrPreviewQuestion ? (
+                qrReady ? (
+                  <QRCodeCanvas
+                    ref={qrCanvasRef}
+                    value={buildResultsUrl(qrPreviewQuestion.id)}
+                    size={260}
+                    includeMargin
+                  />
+                ) : (
+                  <div className="h-[260px] w-[260px] rounded-md bg-muted" />
+                )
+              ) : (
+                <div className="h-[260px] w-[260px] rounded-md bg-muted" />
+              )}
+            </div>
+
+            <div className="flex w-full items-center justify-between">
+              <div>
+                <p className="font-medium">spill_{qrPreviewQuestion?.id ?? ""}_QR.png</p>
+                <p className="text-sm text-muted-foreground">PNG download</p>
+              </div>
+              <Button onClick={handleDownloadQr} disabled={!qrPreviewQuestion || !qrReady}>
+                <ImageDown className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function QuestionCard({
+  question,
+  index,
+  resultsUrl,
+  onViewResults,
+  onOpenQr,
+}: {
+  question: FacilityQuestion;
+  index: number;
+  resultsUrl: string;
+  onViewResults: () => void;
+  onOpenQr: () => void;
+}) {
+  const [qrReady, setQrReady] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setQrReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, [resultsUrl]);
+
+  const questionNumber = index + 1;
+  const inactive = !question.isActive;
+
+  return (
+    <Card className={`w-64 flex-shrink-0 ${inactive ? 'bg-muted/50 border-dashed text-muted-foreground' : ''}`}>
+      <CardHeader className="gap-1 pb-3">
+        <CardDescription className="text-xs">Question {questionNumber}</CardDescription>
+        <CardTitle className="text-lg leading-snug line-clamp-2">{question.title}</CardTitle>
+        <div className="text-xs text-muted-foreground capitalize">{question.type}</div>
+        {inactive && <div className="text-xs font-medium text-muted-foreground">Inactive</div>}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div
+          className="mx-auto flex h-36 w-36 cursor-pointer items-center justify-center rounded-lg border bg-card/80"
+          onClick={onOpenQr}
+        >
+          {qrReady ? (
+            <QRCodeCanvas value={resultsUrl} size={140} includeMargin />
+          ) : (
+            <div className="h-32 w-32 rounded-md bg-muted" />
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button className="flex-1" onClick={onViewResults}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            View Results
+          </Button>
+          <Button variant="outline" size="icon" onClick={onOpenQr}>
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

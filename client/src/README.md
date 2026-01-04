@@ -34,6 +34,12 @@ The application uses toast notification. Toast notifications provide non-intrusi
 
 This is the main Admin Dashboard page. It handles authentication to ensure that only the admins are able to access this page.
 
+### Admin dashboard and QR codes
+
+- The admin dashboard shows facility questions in a horizontal strip (10 at a time, with a load-more control) and provides QR codes that open the results page.
+- QR payloads use the host from `DOMAIN` / `VITE_DOMAIN` in `.env` (falling back to the current origin). Set these to your deployed host so downloaded PNGs point at the right domain.
+- Results pages now share the same card-based layout as the admin dashboard for a consistent admin experience.
+
 ## `src/hooks`
 
 The files in the hooks folder provide custom React hooks that encapsulate reusable logic for handling user input, device detection, and event management in the application.
