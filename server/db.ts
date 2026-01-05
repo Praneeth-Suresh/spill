@@ -292,6 +292,20 @@ export async function getQuestionsByFacility(facilityId: number): Promise<Questi
 }
 
 /**
+ * Get all questions for a facility (including inactive) for admin views.
+ */
+export async function getAllQuestionsByFacility(facilityId: number): Promise<Question[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(questions)
+    .where(eq(questions.facilityId, facilityId))
+    .orderBy(questions.displayOrder);
+}
+
+/**
  * Submit a response with answers.
  * Returns the created response ID.
  */
@@ -593,4 +607,38 @@ export async function getUpdatesByQuestion(questionId: number, limit: number = 5
  */
 export async function getTopUpdates(limit: number = 3): Promise<Update[]> {
   return getLatestUpdates(limit);
+}
+
+/**
+ * Get a user by email address.
+ */
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Update a user by id, omitting email and role fields from update.
+ */
+export async function updateUserById(id: number, data: Partial<Omit<InsertUser, 'email' | 'role'>>) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update user: database not available");
+    return;
+  }
+  // Only allow updating allowed fields
+  const allowedFields = ["openId", "name", "loginMethod", "lastSignedIn"];
+  const updateSet: Record<string, unknown> = {};
+  for (const key of allowedFields) {
+    if (data[key as keyof typeof data] !== undefined) {
+      updateSet[key] = data[key as keyof typeof data];
+    }
+  }
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(users).set(updateSet).where(eq(users.id, id));
 }

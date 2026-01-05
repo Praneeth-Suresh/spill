@@ -1,7 +1,7 @@
 import { useRoute, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import PointsBadge from "@/components/PointsBadge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Disclaimer from "@/components/Disclaimer";
 import UpdatesCard from "@/components/UpdatesCard";
 import { Loader2 } from "lucide-react";
@@ -45,41 +45,61 @@ export default function ResultsPage() {
 
   if (!hasQuestionContext) {
     return (
-      <div className="spill-mobile-card">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">spill.</h1>
-          <PointsBadge />
-        </div>
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card/40">
+          <div className="container flex items-center justify-between py-4 max-w-5xl">
+            <a href="/" className="text-2xl font-bold hover:underline">spill.</a>
+            <Button variant="outline" onClick={() => setLocation("/")}>
+              Back to Home
+            </Button>
+          </div>
+        </header>
 
-        <div className="spill-card mb-6">
-          <h2 className="text-2xl font-bold mb-2">Good spill.</h2>
-          <p className="text-lg">Latest results and updates.</p>
-        </div>
+        <main className="container max-w-5xl py-8 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardDescription>Results landing</CardDescription>
+              <CardTitle className="text-2xl">Good spill.</CardTitle>
+              <p className="text-muted-foreground">Latest results and updates across your questions.</p>
+            </CardHeader>
+          </Card>
 
-        <div className="spill-card mb-6">
-          <UpdatesCard
-            title="Newest updates"
-            updates={latestUpdates}
-            isLoading={latestUpdatesLoading && !latestUpdates}
-            emptyText="No updates are available yet."
-            showQuestionTag
-          />
-        </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Newest updates</CardTitle>
+              <CardDescription>Fresh changes rolling out from recent feedback.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UpdatesCard
+                title=""
+                updates={latestUpdates}
+                isLoading={latestUpdatesLoading && !latestUpdates}
+                emptyText="No updates are available yet."
+                showQuestionTag
+                className="bg-card border rounded-xl shadow-none p-0"
+              />
+            </CardContent>
+          </Card>
 
-        <Button onClick={() => setLocation("/")} className="spill-button w-full mb-3">
-          Back to Home
-        </Button>
+          <Card>
+            <CardContent className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => setLocation("/")}>Back to Home</Button>
+            </CardContent>
+          </Card>
 
-        <div className="mt-6">
-          <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
-        </div>
+          <Card>
+            <CardContent>
+              <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
 
   if (questionLoading || statsLoading) {
     return (
-      <div className="spill-mobile-card flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="animate-spin h-8 w-8" />
       </div>
     );
@@ -87,11 +107,16 @@ export default function ResultsPage() {
 
   if (!questionData || !stats) {
     return (
-      <div className="spill-mobile-card flex items-center justify-center">
-        <div className="spill-card text-center">
-          <h2 className="text-xl font-bold mb-4">Results not available</h2>
-          <Button onClick={() => setLocation("/")}>Go Home</Button>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Results not available</CardTitle>
+            <CardDescription>We could not load the requested results.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setLocation("/")}>Go Home</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -99,101 +124,149 @@ export default function ResultsPage() {
   const { question } = questionData;
 
   return (
-    <div className="spill-mobile-card">
-      <div className="flex items-center justify-between mb-6">
-        <a href="/" className="text-3xl font-bold hover:underline">spill.</a>
-        <PointsBadge />
-      </div>
-
-      {/* Title Card */}
-      <div className="spill-card mb-6">
-        <h2 className="text-2xl font-bold mb-2">Good spill.</h2>
-        <p className="text-lg">See what's happening with your feedback.</p>
-      </div>
-      
-      {/* Total Responses */}
-      <div className="spill-card mb-6 text-center">
-        <div className="text-4xl font-bold mb-2">{stats.totalResponses}</div>
-        <div className="text-sm text-muted-foreground">Total responses received</div>
-      </div>
-
-      {/* Results Card - For Poll Questions */}
-      {question.type === 'poll' && stats.optionStats.length > 0 && (
-        <div className="spill-card mb-6">
-          <h3 className="font-semibold mb-4">Results</h3>
-          <div className="space-y-3">
-            {stats.optionStats.map((stat) => {
-              const percentage = stats.totalResponses > 0 
-                ? Math.round((stat.count / stats.totalResponses) * 100) 
-                : 0;
-              
-              return (
-                <div key={stat.optionId} className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{stat.optionText}</span>
-                    <span className="text-sm text-muted-foreground">{stat.count}</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-[6px] h-2">
-                    <div
-                      className="bg-primary h-2 rounded-[6px] transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card/40">
+        <div className="container flex items-center justify-between py-4 max-w-5xl">
+          <a href="/" className="text-2xl font-bold hover:underline">spill.</a>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setLocation("/")}>Back to Home</Button>
           </div>
         </div>
-      )}
+      </header>
 
+      <main className="container max-w-5xl py-8 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardDescription>Results overview</CardDescription>
+            <CardTitle className="text-2xl leading-tight">{question.title}</CardTitle>
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              <span className="font-medium capitalize">{question.type} question</span>
+              <span>Question ID #{question.id}</span>
+              <span className={question.isActive ? "text-green-700" : "text-muted-foreground"}>
+                {question.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+            {question.description && <p className="text-muted-foreground text-sm">{question.description}</p>}
+          </CardHeader>
+        </Card>
 
-
-      {/* Updates Card - For Text Questions */}
-      {question.type !== 'poll' && recentResponses && recentResponses.length > 0 && (
-        <div className="spill-card mb-6">
-          <h3 className="font-semibold mb-4">Updates</h3>
-          <div className="space-y-4">
-            {recentResponses.map((response) => (
-              <div key={response.id} className="border-l-2 border-primary pl-4">
-                <div className="text-sm text-muted-foreground mb-1">
-                  {format(new Date(response.submittedAt), 'dd MMM yyyy, HH:mm')}
-                </div>
-                <p className="text-sm">{response.textAnswer}</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="rounded-lg bg-primary/10 p-6 text-center">
+                <div className="text-4xl font-bold mb-2">{stats.totalResponses}</div>
+                <div className="text-sm text-muted-foreground">Total responses received</div>
               </div>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Recent activity</CardTitle>
+              <CardDescription>Latest feedback and updates for this question.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {question.type !== 'poll' && recentResponses && recentResponses.length === 0 && (
+                <p className="text-sm text-muted-foreground">No responses yet.</p>
+              )}
+              {question.type !== 'poll' && recentResponses && recentResponses.length > 0 && (
+                <div className="space-y-3">
+                  {recentResponses.slice(0, 3).map((response) => (
+                    <div key={response.id} className="border-l-2 border-primary/60 pl-3">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {format(new Date(response.submittedAt), 'dd MMM yyyy, HH:mm')}
+                      </div>
+                      <p className="text-sm leading-relaxed">{response.textAnswer}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {question.type === 'poll' && (
+                <p className="text-sm text-muted-foreground">Poll responses update in real time.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      )}
 
-      <div className="mb-6">
-        <UpdatesCard
-          title="Updates for this question"
-          updates={questionUpdates}
-          isLoading={questionUpdatesLoading && !questionUpdates}
-          emptyText="No updates for this question yet."
-        />
-      </div>
+        {question.type === 'poll' && stats.optionStats.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Results</CardTitle>
+              <CardDescription>Breakdown of votes per option.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {stats.optionStats.map((stat) => {
+                const percentage = stats.totalResponses > 0
+                  ? Math.round((stat.count / stats.totalResponses) * 100)
+                  : 0;
 
-      {/* Action Buttons */}
-      <div className="space-y-3">
-        <Button
-          onClick={() => setLocation(`/question/${questionId}`)}
-          className="spill-button w-full"
-        >
-          Submit Another Response
-        </Button>
-        <Button
-          onClick={() => setLocation("/")}
-          variant="outline"
-          className="w-full"
-        >
-          Back to Home
-        </Button>
-      </div>
+                return (
+                  <div key={stat.optionId} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{stat.optionText}</span>
+                      <span className="text-muted-foreground">{stat.count} ({percentage}%)</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-secondary">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${percentage}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
-      <div className="mt-6">
-        <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
-      </div>
+        {question.type !== 'poll' && recentResponses && recentResponses.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Latest responses</CardTitle>
+              <CardDescription>Most recent feedback submitted for this question.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {recentResponses.map((response) => (
+                <div key={response.id} className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {format(new Date(response.submittedAt), 'dd MMM yyyy, HH:mm')}
+                  </div>
+                  <p className="text-sm leading-relaxed">{response.textAnswer}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Updates for this question</CardTitle>
+            <CardDescription>Change log and improvements tied to this feedback.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UpdatesCard
+              title=""
+              updates={questionUpdates}
+              isLoading={questionUpdatesLoading && !questionUpdates}
+              emptyText="No updates for this question yet."
+              className="bg-card border-none rounded-xl shadow-none p-0"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Keep the feedback coming</CardTitle>
+              <CardDescription>Your next submission updates these numbers instantly.</CardDescription>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <Button className="flex-1 md:flex-none" onClick={() => setLocation(`/question/${questionId}`)}>
+                Submit Another Response
+              </Button>
+              <Button variant="outline" className="flex-1 md:flex-none" onClick={() => setLocation("/")}>
+                Back to Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }

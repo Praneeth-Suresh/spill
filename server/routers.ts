@@ -341,6 +341,22 @@ export const appRouter = router({
     }),
 
     /**
+     * Get all questions for a facility (including inactive) for admin dashboards.
+     */
+    getFacilityQuestions: adminProcedure
+      .input(z.object({ facilityId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const facilities = await db.getUserFacilities(ctx.user.id, ctx.user.role);
+        const hasAccess = facilities.some(f => f.id === input.facilityId);
+
+        if (!hasAccess) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this facility' });
+        }
+
+        return await db.getAllQuestionsByFacility(input.facilityId);
+      }),
+
+    /**
      * Get statistics for a facility.
      * Admins can only access their assigned facilities.
      */

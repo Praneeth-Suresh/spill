@@ -2,10 +2,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Request, Response } from "express";
 import { COOKIE_NAME } from "../shared/const";
 
+
 const upsertUser = vi.hoisted(() => vi.fn(async () => {}));
+const getUserByEmail = vi.hoisted(() => vi.fn(async () => undefined));
+const updateUserById = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock("./db", () => ({
   upsertUser,
+  getUserByEmail,
+  updateUserById,
 }));
 
 // Import after mocks
@@ -66,23 +71,22 @@ function mockRes() {
   return res as Response & any;
 }
 
+
 describe("OAuth Callback (Google)", () => {
   beforeEach(() => {
     upsertUser.mockClear();
+    getUserByEmail.mockClear();
+    updateUserById.mockClear();
   });
 
-  it("exchanges code, sets cookie, and redirects", async () => {
+  it("creates new user if not found by email", async () => {
+    getUserByEmail.mockResolvedValue(undefined);
     const req = mockReq({ code: "abc123" });
     const res = mockRes();
 
     await oauthCallbackHandler(req, res);
 
-    // Should set cookie
-    expect(res._cookie?.name).toBe(COOKIE_NAME);
-    expect(typeof res._cookie?.value).toBe("string");
-    // Should redirect to root
-    expect(res._redirect).toEqual({ status: 302, url: "/" });
-    // Should upsert user
+    expect(getUserByEmail).toHaveBeenCalledWith("test@example.com");
     expect(upsertUser).toHaveBeenCalledWith(
       expect.objectContaining({
         openId: "google-sub-123",
@@ -91,6 +95,28 @@ describe("OAuth Callback (Google)", () => {
         loginMethod: "google",
       })
     );
+    expect(updateUserById).not.toHaveBeenCalled();
+    expect(res._cookie?.name).toBe(COOKIE_NAME);
+    expect(res._redirect).toEqual({ status: 302, url: "/" });
+  });
+
+  it("updates existing user by email, does not change email or role", async () => {
+    getUserByEmail.mockResolvedValue({ id: 42, email: "test@example.com", role: "admin" });
+    const req = mockReq({ code: "abc123" });
+    const res = mockRes();
+
+    await oauthCallbackHandler(req, res);
+
+    expect(getUserByEmail).toHaveBeenCalledWith("test@example.com");
+    expect(updateUserById).toHaveBeenCalledWith(42, expect.objectContaining({
+      openId: "google-sub-123",
+      name: "Test User",
+      loginMethod: "google",
+      lastSignedIn: expect.any(Date),
+    }));
+    expect(upsertUser).not.toHaveBeenCalled();
+    expect(res._cookie?.name).toBe(COOKIE_NAME);
+    expect(res._redirect).toEqual({ status: 302, url: "/" });
   });
 
   it("returns 400 when code is missing", async () => {
