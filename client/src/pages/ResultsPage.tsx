@@ -245,7 +245,7 @@ export default function ResultsPage() {
               updates={questionUpdates}
               isLoading={questionUpdatesLoading && !questionUpdates}
               emptyText="No updates for this question yet."
-              className="bg-card border rounded-xl shadow-none p-0"
+              className="bg-card border-none rounded-xl shadow-none p-0"
             />
           </CardContent>
         </Card>
@@ -264,12 +264,6 @@ export default function ResultsPage() {
                 Back to Home
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Disclaimer title="About Results" description="Results update in real-time as new responses come in. Your feedback shapes what we improve next. Thank you for participating!" />
           </CardContent>
         </Card>
       </main>

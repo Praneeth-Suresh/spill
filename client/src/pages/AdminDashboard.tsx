@@ -102,6 +102,39 @@ export default function AdminDashboard() {
     });
   };
 
+  // Auto-select first facility if available
+  useEffect(() => {
+    if (facilities && facilities.length > 0 && !selectedFacilityId) {
+      setSelectedFacilityId(facilities[0].id);
+    }
+  }, [facilities, selectedFacilityId]);
+
+  // Reset question list and modal when facility changes
+  useEffect(() => {
+    setVisibleQuestionCount(10);
+    setQrPreviewQuestion(null);
+    setIsQrModalOpen(false);
+  }, [selectedFacilityId]);
+
+  // Prepare QR download once the modal canvas is ready
+  useEffect(() => {
+    if (!isQrModalOpen || !qrPreviewQuestion) {
+      setQrReady(false);
+      setQrDownloadUrl(null);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const canvas = qrCanvasRef.current;
+      if (canvas) {
+        setQrReady(true);
+        setQrDownloadUrl(canvas.toDataURL("image/png"));
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [isQrModalOpen, qrPreviewQuestion]);
+
   // Redirect to login if not authenticated
   if (authLoading) {
     return (
@@ -147,39 +180,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Auto-select first facility if available
-  useEffect(() => {
-    if (facilities && facilities.length > 0 && !selectedFacilityId) {
-      setSelectedFacilityId(facilities[0].id);
-    }
-  }, [facilities, selectedFacilityId]);
-
-  // Reset question list and modal when facility changes
-  useEffect(() => {
-    setVisibleQuestionCount(10);
-    setQrPreviewQuestion(null);
-    setIsQrModalOpen(false);
-  }, [selectedFacilityId]);
-
-  // Prepare QR download once the modal canvas is ready
-  useEffect(() => {
-    if (!isQrModalOpen || !qrPreviewQuestion) {
-      setQrReady(false);
-      setQrDownloadUrl(null);
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      const canvas = qrCanvasRef.current;
-      if (canvas) {
-        setQrReady(true);
-        setQrDownloadUrl(canvas.toDataURL("image/png"));
-      }
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [isQrModalOpen, qrPreviewQuestion]);
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -219,21 +219,34 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-[1.5fr,1fr]">
-              <Select
-                value={selectedFacilityId?.toString()}
-                onValueChange={(value) => setSelectedFacilityId(parseInt(value))}
-              >
-                <SelectTrigger className="h-12 text-base">
-                  <SelectValue placeholder="Choose a facility" />
-                </SelectTrigger>
-                <SelectContent>
-                  {facilities?.map((facility) => (
-                    <SelectItem key={facility.id} value={facility.id.toString()}>
-                      {facility.name} ({facility.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                {/* Prominent selected facility display */}
+                {selectedFacilityId && (
+                  <div className="mb-2">
+                    <span className="text-5xl font-bold">
+                      {facilities?.find(f => f.id === selectedFacilityId)?.name}
+                    </span>
+                    <span className="ml-2 text-xl font-semibold text-muted-foreground">
+                      ({facilities?.find(f => f.id === selectedFacilityId)?.code})
+                    </span>
+                  </div>
+                )}
+                <Select
+                  value={selectedFacilityId?.toString()}
+                  onValueChange={(value) => setSelectedFacilityId(parseInt(value))}
+                >
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Choose a facility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facilities?.map((facility) => (
+                      <SelectItem key={facility.id} value={facility.id.toString()}>
+                        {facility.name} ({facility.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <Select value={timeRange} onValueChange={(value: any) => setTimeRange(value)}>
                   <SelectTrigger className="h-12">
