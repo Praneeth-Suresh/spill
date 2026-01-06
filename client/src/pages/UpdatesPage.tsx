@@ -64,7 +64,7 @@ export default function UpdatesPage() {
       </div>
 
       <div className="mb-5">
-        <h2 className="text-2xl font-bold leading-tight">Good spill!</h2>
+        <h2 className="text-2xl font-bold leading-tight">Good spill.</h2>
       </div>
 
       {/* Question-specific updates card */}
@@ -127,31 +127,29 @@ export default function UpdatesPage() {
       </div> */}
 
       <div className="spill-card space-y-4">
-        <h3 className="font-semibold mb-2">What is spill?</h3>
+        <h3 className="font-semibold mb-2">spill?</h3>
         <div className="text-sm text-muted-foreground mb-2">
-          A quick introduction to the platform.
+          A bit more about what we do!
         </div>
-        {isLoading && (
-          <Loader2 className="h-5 w-5 animate-spin text-black" aria-label="Loading updates" />
-        )}
+
         <div className="text-base leading-relaxed text-gray-800 space-y-3">
           <p>
-            <span className="font-bold text-blue-700">spill</span> is a platform for
-            <span className="text-blue-600 font-semibold"> gathering feedback</span> and
-            <span className="text-green-600 font-semibold"> sharing updates</span> in a transparent way.
-            When you submit responses to questions, your feedback helps shape improvements and changes.
+            <i>spill</i> is a platform for gathering <b>feedback</b> and
+            sharing <b>updates</b> in a transparent way.
+            When you submit responses to questions, your 
+            feedback helps shape improvements and changes.
           </p>
           <p>
-            <span className="font-semibold text-green-700">Updates</span> are posted in real-time as feedback is collected and processed.
+            Updates are posted in <i>real-time</i> as feedback is collected 
+            and processed.
             This way, you can see how your input contributes to
-            <span className="text-blue-700 font-semibold"> positive changes</span>.
+            positive changes.
           </p>
+          <p><i>
+            Thank you for being part of the spill community!
+          </i></p>
           <p>
-            <span className="font-bold text-blue-700">Thank you</span> for being part of the
-            <span className="text-green-700 font-bold"> spill community!</span> 
-          </p>
-          <p>
-            Your voice matters, and together we can make a difference. <span className="text-xl">🌱</span>
+            Your voice matters, and together we can make a difference.
           </p>
         </div>
       </div>
