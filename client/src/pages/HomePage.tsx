@@ -58,8 +58,32 @@ export default function HomePage() {
         <PointsBadge />
       </div>
 
+      <div className="spill-card space-y-4">
+        <h3 className="font-semibold mb-2">How do I spill?</h3>
+        <div className="text-sm text-muted-foreground mb-2">
+          Its simple!
+        </div>
+
+        <div className="text-base leading-relaxed text-gray-800 space-y-3">
+          <p>
+            If you feel that things could be better
+            if they were done differently, just spill!
+          </p>
+          <p>
+            Updates are posted in <i>real-time</i> as feedback is collected 
+            and processed.
+            This way, you can see how your input contributes to
+            positive changes.
+          </p>
+          <p>
+            Your voice matters, and together we can make a difference.
+          </p>
+        </div>
+      </div>
+
       {/* Feedback Card */}
-      <div className="spill-card">
+      {/* For now this feedback card won't be used. */}
+      {/* <div className="spill-card">
         <h2 className="text-xl font-bold mb-4">Tell us anything!</h2>
         <p className="text-sm text-muted-foreground mb-6">
           Your thoughts help us make this better.
@@ -86,7 +110,7 @@ export default function HomePage() {
             "spill now."
           )}
         </Button>
-      </div>
+      </div> */}
 
       {/* Quick Links */}
       <div className="mt-6 space-y-3">
