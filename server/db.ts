@@ -8,19 +8,17 @@ import {
   questionOptions,
   responses,
   responseAnswers,
-  uploadedFiles,
   adminFacilities,
-  questionBranching,
   points,
   ipAddresses,
   updates,
+  experiments,
+  experimentExposures,
   type Facility,
   type Question,
   type QuestionOption,
-  type Response,
-  type ResponseAnswer,
-  type AdminFacility,
   type Update,
+  type InsertExperimentExposure,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -641,4 +639,137 @@ export async function updateUserById(id: number, data: Partial<Omit<InsertUser, 
   }
   if (Object.keys(updateSet).length === 0) return;
   await db.update(users).set(updateSet).where(eq(users.id, id));
+}
+
+/**
+ * Get all active experiments for a specific page/question
+ * 
+ * @param pagePath - Optional page path to filter experiments
+ * @param questionId - Optional question ID to filter experiments
+ * @returns Array of active experiments matching the criteria
+ */
+export async function getActiveExperiments(pagePath?: string, questionId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(experiments)
+    .where(
+      and(
+        eq(experiments.isActive, true),
+        pagePath ? eq(experiments.pagePath, pagePath) : undefined,
+        questionId ? eq(experiments.questionId, questionId) : undefined
+      )
+    );
+}
+
+/**
+ * Get GrowthBook-compatible configuration for all active experiments
+ * Transforms database experiment records into GrowthBook feature format
+ * 
+ * @param pagePath - Optional page path to filter experiments
+ * @param questionId - Optional question ID to filter experiments
+ * @returns GrowthBook features configuration object
+ */
+export async function getGrowthBookConfig(pagePath?: string, questionId?: number) {
+  const activeExperiments = await getActiveExperiments(pagePath, questionId);
+  
+  // Transform to GrowthBook format
+  const features: Record<string, any> = {};
+  
+  for (const exp of activeExperiments) {
+    // Parse JSON fields with proper type checking
+    const variations = Array.isArray(exp.variations) ? exp.variations : [];
+    const weights = Array.isArray(exp.weights) ? exp.weights : undefined;
+    const condition = exp.condition ? exp.condition : undefined;
+    const coverage = typeof exp.coverage === 'number' ? exp.coverage : 100;
+    
+    features[exp.key] = {
+      defaultValue: variations[0]?.value || null,
+      rules: [
+        {
+          condition: condition,
+          coverage: coverage / 100, // Convert to 0-1 range
+          weights: weights,
+          variations: variations.map((v: any) => v.value),
+          key: exp.key,
+          // Add experiment metadata for tracking
+          meta: {
+            experimentId: exp.id,
+            experimentName: exp.name,
+          },
+        },
+      ],
+    };
+  }
+  
+  return { features };
+}
+
+/**
+ * Track experiment exposure
+ * Records when a user is exposed to a specific experiment variation
+ * 
+ * @param exposure - Exposure data including device ID, experiment key, variation, etc.
+ */
+export async function trackExposure(exposure: InsertExperimentExposure) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.insert(experimentExposures).values(exposure);
+}
+
+/**
+ * Get experiment results for analysis
+ * Calculates exposure and conversion counts by variation
+ * 
+ * @param experimentKey - The unique key of the experiment to analyze
+ * @returns Object containing exposure and conversion data by variation
+ * 
+ * @example
+ * ```ts
+ * const results = await getExperimentResults('button-color-test');
+ * // results = {
+ * //   exposures: [{ variationId: '0', count: 100 }, { variationId: '1', count: 98 }],
+ * //   conversions: [{ variationId: '0', count: 25 }, { variationId: '1', count: 32 }]
+ * // }
+ * ```
+ */
+export async function getExperimentResults(experimentKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  // Get exposure counts by variation
+  const exposures = await db
+    .select({
+      variationId: experimentExposures.variationId,
+      count: sql<number>`COUNT(DISTINCT ${experimentExposures.deviceId})`,
+    })
+    .from(experimentExposures)
+    .where(eq(experimentExposures.experimentKey, experimentKey))
+    .groupBy(experimentExposures.variationId);
+  
+  // Get conversion data (submissions) by joining with responses table
+  // This tracks users who were exposed to an experiment AND submitted a response
+  const conversions = await db
+    .select({
+      variationId: experimentExposures.variationId,
+      count: sql<number>`COUNT(DISTINCT ${experimentExposures.deviceId})`,
+    })
+    .from(experimentExposures)
+    .innerJoin(
+      responses,
+      and(
+        eq(experimentExposures.ipAddress, responses.ipAddress),
+        sql`${experimentExposures.exposedAt} <= ${responses.submittedAt}`
+      )
+    )
+    .where(eq(experimentExposures.experimentKey, experimentKey))
+    .groupBy(experimentExposures.variationId);
+  
+  return {
+    exposures,
+    conversions,
+  };
 }

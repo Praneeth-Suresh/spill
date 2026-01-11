@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import type { TrpcContext } from "./_core/context";
 import { responses } from "../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
+import { experimentsRouter } from "./routers/experiments";
 
 /**
  * Admin-only procedure that checks if user has admin or super_admin role.
@@ -494,6 +495,11 @@ export const appRouter = router({
         return await db.getFacilityAdmins(input.facilityId);
       }),
   }),
+  
+  /**
+   * Experiments router for A/B testing
+   */
+  experiments: experimentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

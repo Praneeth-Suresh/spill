@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, foreignKey } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, foreignKey } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -223,6 +223,39 @@ export const updates = mysqlTable("updates", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Experiment configuration table
+ * Stores the definition of each A/B test experiment
+ */
+export const experiments = mysqlTable("experiments", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(), // e.g., "button-color-test"
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // GrowthBook-compatible configuration
+  variations: json("variations").notNull(), // Array of {id, name, value}
+  weights: json("weights"), // Optional: [0.5, 0.5] for 50/50 split
+  coverage: int("coverage").default(100), // Percentage of users to include (0-100)
+  
+  // Targeting rules (optional)
+  condition: json("condition"), // JSON logic for audience targeting
+  
+  // Page/question targeting
+  pagePath: varchar("page_path", { length: 255 }), // NULL = all pages
+  questionId: int("question_id"), // NULL = not question-specific
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  questionFk: foreignKey({
+    columns: [table.questionId],
+    foreignColumns: [questions.id],
+  }),
+}));
+
+
 export type Update = typeof updates.$inferSelect;
 export type InsertUpdate = typeof updates.$inferInsert;
 
@@ -338,3 +371,34 @@ export const questionBranchingRelations = relations(questionBranching, ({ one })
 export const updatesRelations = relations(updates, ({ }) => ({}));
 
 export const ipAddressesRelations = relations(ipAddresses, ({ }) => ({}));
+
+/**
+ * Experiment exposures track when users are shown a specific experiment variation.
+ * Used for analytics and A/B testing analysis.
+ */
+export const experimentExposures = mysqlTable("experiment_exposures", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // User identification
+  deviceId: varchar("device_id", { length: 64 }).notNull(),
+  sessionId: varchar("session_id", { length: 64 }).notNull(),
+  
+  // Experiment details
+  experimentKey: varchar("experiment_key", { length: 100 }).notNull(),
+  variationId: varchar("variation_id", { length: 50 }).notNull(),
+  
+  // Context
+  pagePath: varchar("page_path", { length: 255 }),
+  questionId: int("question_id"),
+  
+  // Metadata
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  
+  exposedAt: timestamp("exposed_at").defaultNow().notNull(),
+});
+
+export type Experiment = typeof experiments.$inferSelect;
+export type InsertExperiment = typeof experiments.$inferInsert;
+export type ExperimentExposure = typeof experimentExposures.$inferSelect;
+export type InsertExperimentExposure = typeof experimentExposures.$inferInsert;
