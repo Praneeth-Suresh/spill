@@ -36,6 +36,13 @@
       "when": 1765867925463,
       "tag": "0004_brave_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1768199535033,
+      "tag": "0005_familiar_may_parker",
+      "breakpoints": true
     }
   ]
 }

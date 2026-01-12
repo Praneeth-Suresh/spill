@@ -23,6 +23,37 @@ The A/B testing system uses [GrowthBook](https://www.growthbook.io/) to manage e
 
 ## Architecture
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Frontend                             │
+├─────────────────────────────────────────────────────────────┤
+│  useGrowthBook Hook → Initialize GrowthBook                  │
+│  useFeature Hook → Get experiment variations                 │
+│  AdminExperiments → Create experiments                       │
+│  ExperimentResults → View results                            │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   │ tRPC
+                   ↓
+┌─────────────────────────────────────────────────────────────┐
+│                       Backend (tRPC)                         │
+├─────────────────────────────────────────────────────────────┤
+│  experiments.getConfig → Return GrowthBook config            │
+│  experiments.trackExposure → Save exposure events            │
+│  experiments.getResults → Calculate conversion rates         │
+│  experiments.create → Create new experiments                 │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Database (MySQL)                          │
+├─────────────────────────────────────────────────────────────┤
+│  experiments → Store experiment configurations               │
+│  experiment_exposures → Track user exposures                 │
+│  responses → Track conversions                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ### Key Components
 
 1. **Database Tables**:
@@ -32,6 +63,7 @@ The A/B testing system uses [GrowthBook](https://www.growthbook.io/) to manage e
 2. **Backend**:
    - `server/db.ts`: Database operations for experiments
    - `server/routers/experiments.ts`: tRPC endpoints for experiment management
+
 3. **Frontend**:
    - `client/src/hooks/useGrowthBook.ts`: React hooks for A/B testing
    - `client/src/pages/AdminExperiments.tsx`: Admin interface for creating experiments
@@ -299,8 +331,8 @@ const variantRate = calculateConversionRate(517, 104); // 20.12%
 
 For statistical significance, use a tool like:
 
-- [Evan's Awesome A/B Tools](https://www.evanmiller.org/ab-testing/sample-size.html)
-- [Optimizely's Stats Engine](https://www.optimizely.com/insights/blog/stats-engine/)
+- [Evan&#39;s Awesome A/B Tools](https://www.evanmiller.org/ab-testing/sample-size.html)
+- [Optimizely&#39;s Stats Engine](https://www.optimizely.com/insights/blog/stats-engine/)
 
 ### Step 4: Export Raw Data
 
@@ -397,6 +429,7 @@ ORDER BY ee.exposedAt DESC;
    - Check for errors
 
 3. **Verify database connection**:
+
    ```sql
    SELECT COUNT(*) FROM experiment_exposures
    WHERE experimentKey = 'your-experiment-key';

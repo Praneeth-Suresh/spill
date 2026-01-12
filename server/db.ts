@@ -736,6 +736,34 @@ export async function trackExposure(exposure: InsertExperimentExposure) {
  * // }
  * ```
  */
+/**
+ * List all experiments
+ */
+export async function listExperiments() {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  const allExperiments = await db
+    .select({
+      key: experiments.key,
+      name: experiments.name,
+      description: experiments.description,
+      isActive: experiments.isActive,
+      createdAt: experiments.createdAt,
+    })
+    .from(experiments)
+    .orderBy(desc(experiments.createdAt));
+  
+  return allExperiments;
+}
+
+/**
+ * Get experiment results for analysis
+ * Returns exposure counts and conversion data by variation
+ * 
+ * @param experimentKey - The unique identifier for the experiment
+ * @returns Object containing exposures and conversions by variation
+ */
 export async function getExperimentResults(experimentKey: string) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');

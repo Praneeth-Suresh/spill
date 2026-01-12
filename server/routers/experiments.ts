@@ -65,6 +65,14 @@ export const experimentsRouter = router({
     }),
   
   /**
+   * List all experiments (admin only)
+   */
+  list: protectedProcedure
+    .query(async () => {
+      return await db.listExperiments();
+    }),
+  
+  /**
    * Create a new experiment (admin only)
    */
   create: protectedProcedure

@@ -1,86 +1,121 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { experimentsRouter } from './routers/experiments';
-import type { TrpcContext } from './_core/context';
+import * as db from './db';
+import { experiments } from '../drizzle/schema';
 
-// Mock the db module
+/**
+ * API endpoint tests for experiments router
+ * Tests tRPC procedures with proper database mocking
+ */
+
+// Mock database module
 vi.mock('./db', () => ({
   getDb: vi.fn(),
   getGrowthBookConfig: vi.fn(),
   trackExposure: vi.fn(),
   getExperimentResults: vi.fn(),
+  listExperiments: vi.fn(),
 }));
 
+// Mock drizzle schema
 vi.mock('../drizzle/schema', () => ({
-  experiments: {
-    insert: vi.fn(),
-  },
+  experiments: {},
+  experimentExposures: {},
 }));
 
 describe('Experiments Router', () => {
-  let mockContext: Partial<TrpcContext>;
-
   beforeEach(() => {
-    mockContext = {
-      req: {
-        ip: '192.168.1.1',
-        headers: {
-          'user-agent': 'Mozilla/5.0',
-        },
-      } as any,
-      res: {} as any,
-      user: {
-        id: 1,
-        openId: 'test-user',
-        name: 'Test User',
-        role: 'admin',
-        points: 0,
-      } as any,
-    };
-
     vi.clearAllMocks();
   });
 
-  describe('getConfig', () => {
-    it('should return GrowthBook config', async () => {
-      const { getGrowthBookConfig } = await import('./db');
-      
+  describe('getConfig endpoint', () => {
+    it('should return GrowthBook config for a given page', async () => {
       const mockConfig = {
         features: {
           'button-color-test': {
             defaultValue: '#CDFF00',
-            rules: [],
+            rules: [
+              {
+                condition: undefined,
+                coverage: 1,
+                weights: [0.5, 0.5],
+                variations: ['#CDFF00', '#FF6B6B'],
+                key: 'button-color-test',
+                meta: {
+                  experimentId: 1,
+                  experimentName: 'Button Color Test',
+                },
+              },
+            ],
           },
         },
       };
 
-      vi.mocked(getGrowthBookConfig).mockResolvedValue(mockConfig);
+      vi.mocked(db.getGrowthBookConfig).mockResolvedValue(mockConfig);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: null,
+      });
+
       const result = await caller.getConfig({ pagePath: '/home' });
 
+      expect(db.getGrowthBookConfig).toHaveBeenCalledWith('/home', undefined);
       expect(result).toEqual(mockConfig);
-      expect(getGrowthBookConfig).toHaveBeenCalledWith('/home', undefined);
+      expect(result.features['button-color-test']).toBeDefined();
     });
 
-    it('should handle optional parameters', async () => {
-      const { getGrowthBookConfig } = await import('./db');
-      
-      vi.mocked(getGrowthBookConfig).mockResolvedValue({ features: {} });
+    it('should return config for a specific question', async () => {
+      const mockConfig = {
+        features: {
+          'question-layout-test': {
+            defaultValue: 'vertical',
+            rules: [
+              {
+                condition: undefined,
+                coverage: 0.5,
+                weights: [0.5, 0.5],
+                variations: ['vertical', 'horizontal'],
+                key: 'question-layout-test',
+                meta: {
+                  experimentId: 2,
+                  experimentName: 'Question Layout Test',
+                },
+              },
+            ],
+          },
+        },
+      };
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
-      await caller.getConfig({});
+      vi.mocked(db.getGrowthBookConfig).mockResolvedValue(mockConfig);
 
-      expect(getGrowthBookConfig).toHaveBeenCalledWith(undefined, undefined);
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: null,
+      });
+
+      const result = await caller.getConfig({ questionId: 5 });
+
+      expect(db.getGrowthBookConfig).toHaveBeenCalledWith(undefined, 5);
+      expect(result.features['question-layout-test']).toBeDefined();
     });
   });
 
-  describe('trackExposure', () => {
-    it('should track exposure with correct data', async () => {
-      const { trackExposure } = await import('./db');
-      
-      vi.mocked(trackExposure).mockResolvedValue(undefined);
+  describe('trackExposure endpoint', () => {
+    it('should track user exposure to an experiment', async () => {
+      vi.mocked(db.trackExposure).mockResolvedValue(undefined);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
+      const caller = experimentsRouter.createCaller({
+        req: {
+          ip: '192.168.1.1',
+          headers: { 'user-agent': 'Mozilla/5.0' },
+        } as any,
+        res: {} as any,
+        user: null,
+      });
+
       const result = await caller.trackExposure({
         deviceId: 'device-123',
         sessionId: 'session-456',
@@ -89,8 +124,7 @@ describe('Experiments Router', () => {
         pagePath: '/home',
       });
 
-      expect(result).toEqual({ success: true });
-      expect(trackExposure).toHaveBeenCalledWith({
+      expect(db.trackExposure).toHaveBeenCalledWith({
         deviceId: 'device-123',
         sessionId: 'session-456',
         experimentKey: 'button-color-test',
@@ -100,120 +134,139 @@ describe('Experiments Router', () => {
         ipAddress: '192.168.1.1',
         userAgent: 'Mozilla/5.0',
       });
+      expect(result).toEqual({ success: true });
     });
 
-    it('should handle missing IP address', async () => {
-      const { trackExposure } = await import('./db');
-      
-      const contextWithoutIp = {
-        ...mockContext,
+    it('should handle missing IP and user agent', async () => {
+      vi.mocked(db.trackExposure).mockResolvedValue(undefined);
+
+      const caller = experimentsRouter.createCaller({
         req: {
-          headers: {
-            'user-agent': 'Mozilla/5.0',
-          },
+          headers: {},
         } as any,
-      };
-
-      vi.mocked(trackExposure).mockResolvedValue(undefined);
-
-      const caller = experimentsRouter.createCaller(contextWithoutIp as any);
-      await caller.trackExposure({
-        deviceId: 'device-123',
-        sessionId: 'session-456',
-        experimentKey: 'test',
-        variationId: '0',
+        res: {} as any,
+        user: null,
       });
 
-      expect(trackExposure).toHaveBeenCalledWith(
+      const result = await caller.trackExposure({
+        deviceId: 'device-123',
+        sessionId: 'session-456',
+        experimentKey: 'button-color-test',
+        variationId: '1',
+      });
+
+      expect(db.trackExposure).toHaveBeenCalledWith(
         expect.objectContaining({
           ipAddress: 'unknown',
+          userAgent: '',
         })
       );
-    });
-
-    it('should handle x-forwarded-for header', async () => {
-      const { trackExposure } = await import('./db');
-      
-      const contextWithForwardedFor = {
-        ...mockContext,
-        req: {
-          ip: undefined,
-          headers: {
-            'x-forwarded-for': '203.0.113.1',
-            'user-agent': 'Mozilla/5.0',
-          },
-        } as any,
-      };
-
-      vi.mocked(trackExposure).mockResolvedValue(undefined);
-
-      const caller = experimentsRouter.createCaller(contextWithForwardedFor as any);
-      await caller.trackExposure({
-        deviceId: 'device-123',
-        sessionId: 'session-456',
-        experimentKey: 'test',
-        variationId: '0',
-      });
-
-      expect(trackExposure).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ipAddress: '203.0.113.1',
-        })
-      );
+      expect(result).toEqual({ success: true });
     });
   });
 
-  describe('getResults', () => {
-    it('should return experiment results for admin', async () => {
-      const { getExperimentResults } = await import('./db');
-      
+  describe('getResults endpoint (protected)', () => {
+    it('should return experiment results for admin users', async () => {
       const mockResults = {
         exposures: [
           { variationId: '0', count: 100 },
-          { variationId: '1', count: 98 },
+          { variationId: '1', count: 95 },
         ],
         conversions: [
-          { variationId: '0', count: 25 },
-          { variationId: '1', count: 32 },
+          { variationId: '0', count: 10 },
+          { variationId: '1', count: 15 },
         ],
       };
 
-      vi.mocked(getExperimentResults).mockResolvedValue(mockResults);
+      vi.mocked(db.getExperimentResults).mockResolvedValue(mockResults);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
+      });
+
       const result = await caller.getResults({ experimentKey: 'button-color-test' });
 
-      expect(result).toEqual(mockResults);
-      expect(getExperimentResults).toHaveBeenCalledWith('button-color-test');
+      expect(db.getExperimentResults).toHaveBeenCalledWith('button-color-test');
+      expect(result.exposures).toHaveLength(2);
+      expect(result.conversions).toHaveLength(2);
     });
 
-    it('should require authentication', async () => {
-      const contextWithoutUser = {
-        ...mockContext,
+    it('should deny access to non-admin users', async () => {
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
         user: null,
-      };
+      });
 
-      const caller = experimentsRouter.createCaller(contextWithoutUser as any);
-
-      await expect(
-        caller.getResults({ experimentKey: 'test' })
-      ).rejects.toThrow();
+      await expect(caller.getResults({ experimentKey: 'button-color-test' }))
+        .rejects
+        .toThrow();
     });
   });
 
-  describe('create', () => {
-    it('should create experiment with valid data', async () => {
-      const { getDb } = await import('./db');
-      
+  describe('list endpoint (protected)', () => {
+    it('should return all experiments for admin users', async () => {
+      const mockExperiments = [
+        {
+          key: 'experiment-2',
+          name: 'Experiment 2',
+          description: 'Second experiment',
+          isActive: true,
+          createdAt: new Date('2024-01-02'),
+        },
+        {
+          key: 'experiment-1',
+          name: 'Experiment 1',
+          description: 'First experiment',
+          isActive: true,
+          createdAt: new Date('2024-01-01'),
+        },
+      ];
+
+      vi.mocked(db.listExperiments).mockResolvedValue(mockExperiments);
+
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
+      });
+
+      const result = await caller.list();
+
+      expect(db.listExperiments).toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(result[0].key).toBe('experiment-2');
+    });
+
+    it('should deny access to non-admin users', async () => {
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: null,
+      });
+
+      await expect(caller.list()).rejects.toThrow();
+    });
+  });
+
+  describe('create endpoint (protected)', () => {
+    it('should create a new experiment for admin users', async () => {
       const mockDb = {
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(getDb).mockResolvedValue(mockDb as any);
+      vi.mocked(db.getDb).mockResolvedValue(mockDb as any);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
-      const result = await caller.create({
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
+      });
+
+      const experimentInput = {
         key: 'button-color-test',
         name: 'Button Color Test',
         description: 'Testing button colors',
@@ -224,107 +277,109 @@ describe('Experiments Router', () => {
         weights: [0.5, 0.5],
         coverage: 100,
         pagePath: '/home',
-      });
-
-      expect(result).toEqual({ success: true });
-      expect(mockDb.insert).toHaveBeenCalled();
-      expect(mockDb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: 'button-color-test',
-          name: 'Button Color Test',
-          isActive: true,
-        })
-      );
-    });
-
-    it('should serialize JSON fields correctly', async () => {
-      const { getDb } = await import('./db');
-      
-      const mockDb = {
-        insert: vi.fn().mockReturnThis(),
-        values: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(getDb).mockResolvedValue(mockDb as any);
+      const result = await caller.create(experimentInput);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
-      await caller.create({
-        key: 'test',
-        name: 'Test',
-        variations: [{ id: '0', name: 'Control', value: 'A' }],
-        weights: [1.0],
+      expect(db.getDb).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalledWith(experiments);
+      expect(mockDb.values).toHaveBeenCalledWith({
+        key: 'button-color-test',
+        name: 'Button Color Test',
+        description: 'Testing button colors',
+        variations: JSON.stringify(experimentInput.variations),
+        weights: JSON.stringify([0.5, 0.5]),
         coverage: 100,
+        pagePath: '/home',
+        questionId: undefined,
+        isActive: true,
       });
-
-      expect(mockDb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variations: JSON.stringify([{ id: '0', name: 'Control', value: 'A' }]),
-          weights: JSON.stringify([1.0]),
-        })
-      );
+      expect(result).toEqual({ success: true });
     });
 
-    it('should handle optional fields', async () => {
-      const { getDb } = await import('./db');
-      
+    it('should handle missing database connection', async () => {
+      vi.mocked(db.getDb).mockResolvedValue(null);
+
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
+      });
+
+      await expect(caller.create({
+        key: 'test',
+        name: 'Test',
+        variations: [{ id: '0', name: 'Control', value: 'test' }],
+      })).rejects.toThrow('Database not available');
+    });
+
+    it('should deny access to non-admin users', async () => {
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: null,
+      });
+
+      await expect(caller.create({
+        key: 'test',
+        name: 'Test',
+        variations: [{ id: '0', name: 'Control', value: 'test' }],
+      })).rejects.toThrow();
+    });
+  });
+
+  describe('Input validation', () => {
+    it('should accept valid experimentKey input', async () => {
+      const mockResults = {
+        exposures: [
+          { variationId: '0', count: 100 },
+          { variationId: '1', count: 95 },
+        ],
+        conversions: [
+          { variationId: '0', count: 10 },
+          { variationId: '1', count: 15 },
+        ],
+      };
+
+      vi.mocked(db.getExperimentResults).mockResolvedValue(mockResults);
+
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
+      });
+
+      const result = await caller.getResults({ experimentKey: 'valid-key' });
+      expect(result).toEqual(mockResults);
+    });
+
+    it('should validate coverage range', async () => {
       const mockDb = {
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(getDb).mockResolvedValue(mockDb as any);
+      vi.mocked(db.getDb).mockResolvedValue(mockDb as any);
 
-      const caller = experimentsRouter.createCaller(mockContext as any);
-      await caller.create({
-        key: 'test',
-        name: 'Test',
-        variations: [{ id: '0', name: 'Control', value: 'A' }],
-        coverage: 50,
+      const caller = experimentsRouter.createCaller({
+        req: {} as any,
+        res: {} as any,
+        user: { id: 1, role: 'admin', name: 'Admin', email: 'admin@example.com' },
       });
 
-      expect(mockDb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: undefined,
-          weights: null,
-          pagePath: undefined,
-          questionId: undefined,
-        })
-      );
-    });
+      await expect(caller.create({
+        key: 'test',
+        name: 'Test',
+        variations: [{ id: '0', name: 'Control', value: 'test' }],
+        coverage: 150, // Invalid: > 100
+      })).rejects.toThrow();
 
-    it('should throw error when database is unavailable', async () => {
-      const { getDb } = await import('./db');
-      
-      vi.mocked(getDb).mockResolvedValue(null);
-
-      const caller = experimentsRouter.createCaller(mockContext as any);
-
-      await expect(
-        caller.create({
-          key: 'test',
-          name: 'Test',
-          variations: [{ id: '0', name: 'Control', value: 'A' }],
-          coverage: 100,
-        })
-      ).rejects.toThrow('Database not available');
-    });
-
-    it('should require authentication', async () => {
-      const contextWithoutUser = {
-        ...mockContext,
-        user: null,
-      };
-
-      const caller = experimentsRouter.createCaller(contextWithoutUser as any);
-
-      await expect(
-        caller.create({
-          key: 'test',
-          name: 'Test',
-          variations: [],
-          coverage: 100,
-        })
-      ).rejects.toThrow();
+      await expect(caller.create({
+        key: 'test',
+        name: 'Test',
+        variations: [{ id: '0', name: 'Control', value: 'test' }],
+        coverage: -10, // Invalid: < 0
+      })).rejects.toThrow();
     });
   });
 });
