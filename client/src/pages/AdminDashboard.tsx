@@ -29,9 +29,7 @@ export default function AdminDashboard() {
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(10);
   const [qrPreviewQuestion, setQrPreviewQuestion] = useState<FacilityQuestion | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [qrReady, setQrReady] = useState(false);
-  const [qrDownloadUrl, setQrDownloadUrl] = useState<string | null>(null);
+  const qrCanvasRef = useRef<QRCodeCanvas | null>(null);
 
   const domain = (import.meta.env.VITE_DOMAIN as string | undefined)?.replace(/\/$/, "") || window.location.origin;
   const buildResultsUrl = (questionId: number) => `${domain}/results/${questionId}`;
@@ -92,7 +90,7 @@ export default function AdminDashboard() {
   };
 
   const handleDownloadQr = () => {
-    const dataUrl = qrDownloadUrl || qrCanvasRef.current?.toDataURL("image/png");
+    const dataUrl = qrCanvasRef.current?.toDataURL?.("image/png");
     if (!dataUrl || !qrPreviewQuestion) return;
 
     const link = document.createElement('a');
@@ -128,24 +126,6 @@ export default function AdminDashboard() {
   }, [selectedFacilityId]);
 
   // Prepare QR download once the modal canvas is ready
-  useEffect(() => {
-    if (!isQrModalOpen || !qrPreviewQuestion) {
-      setQrReady(false);
-      setQrDownloadUrl(null);
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      const canvas = qrCanvasRef.current;
-      if (canvas) {
-        setQrReady(true);
-        setQrDownloadUrl(canvas.toDataURL("image/png"));
-      }
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [isQrModalOpen, qrPreviewQuestion]);
-
   // Redirect to login if not authenticated
   if (authLoading) {
     return (
@@ -482,16 +462,12 @@ export default function AdminDashboard() {
           <div className="flex flex-col items-center gap-4">
             <div className="rounded-lg border p-4">
               {qrPreviewQuestion ? (
-                qrReady ? (
-                  <QRCodeCanvas
-                    ref={qrCanvasRef}
-                    value={buildResultsUrl(qrPreviewQuestion.id)}
-                    size={260}
-                    includeMargin
-                  />
-                ) : (
-                  <div className="h-[260px] w-[260px] rounded-md bg-muted" />
-                )
+                <QRCodeCanvas
+                  ref={qrCanvasRef}
+                  value={buildResultsUrl(qrPreviewQuestion.id)}
+                  size={260}
+                  includeMargin
+                />
               ) : (
                 <div className="h-[260px] w-[260px] rounded-md bg-muted" />
               )}
@@ -502,7 +478,7 @@ export default function AdminDashboard() {
                 <p className="font-medium">spill_{qrPreviewQuestion?.id ?? ""}_QR.png</p>
                 <p className="text-sm text-muted-foreground">PNG download</p>
               </div>
-              <Button onClick={handleDownloadQr} disabled={!qrPreviewQuestion || !qrReady}>
+              <Button onClick={handleDownloadQr} disabled={!qrPreviewQuestion}>
                 <ImageDown className="mr-2 h-4 w-4" />
                 Download
               </Button>
