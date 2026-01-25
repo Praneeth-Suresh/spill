@@ -24,6 +24,55 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+type CacheEntry<T> = { value: T; expiresAt: number };
+
+class TtlCache<T> {
+  constructor(private ttlMs: number, private maxEntries: number) {}
+  private cache = new Map<string, CacheEntry<T>>();
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  set(key: string, value: T) {
+    if (!this.cache.has(key) && this.cache.size >= this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+  }
+
+  clear(prefix?: string) {
+    if (!prefix) {
+      this.cache.clear();
+      return;
+    }
+
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+const STATS_CACHE_TTL_MS = 60_000; // 1 minute cache to hide DB latency for hot queries
+const STATS_CACHE_MAX_ENTRIES = 200;
+const statsCache = new TtlCache<any>(STATS_CACHE_TTL_MS, STATS_CACHE_MAX_ENTRIES);
+
+const cacheKey = (prefix: string, parts: unknown[]) => `${prefix}:${parts.map(p => JSON.stringify(p)).join(":")}`;
+
+const clearStatsCache = () => {
+  statsCache.clear("qstats:");
+  statsCache.clear("fstats:");
+};
+
 // Ensure MySQL connections allow multiple statements so multi-statement migrations work.
 function ensureMultiStatements(url: string): string {
   try {
@@ -339,6 +388,9 @@ export async function submitResponse(
     });
   }
 
+  // Invalidate cached stats so subsequent reads reflect the new response
+  clearStatsCache();
+
   return responseId;
 }
 
@@ -350,6 +402,9 @@ export async function getQuestionStats(questionId: number): Promise<{
   totalResponses: number;
   optionStats: Array<{ optionId: number; optionText: string; count: number }>;
 }> {
+  const cacheHit = statsCache.get(cacheKey("qstats", [questionId]));
+  if (cacheHit) return cacheHit;
+
   const db = await getDb();
   if (!db) return { totalResponses: 0, optionStats: [] };
 
@@ -379,7 +434,9 @@ export async function getQuestionStats(questionId: number): Promise<{
     count: stat.count,
   }));
 
-  return { totalResponses, optionStats };
+  const payload = { totalResponses, optionStats };
+  statsCache.set(cacheKey("qstats", [questionId]), payload);
+  return payload;
 }
 
 /**
@@ -424,6 +481,9 @@ export async function getFacilityStats(facilityId: number, timeRange: 'week' | '
   totalResponses: number;
   topProblems: Array<{ problem: string; count: number }>;
 }> {
+  const cacheHit = statsCache.get(cacheKey("fstats", [facilityId, timeRange]));
+  if (cacheHit) return cacheHit;
+
   const db = await getDb();
   if (!db) return { totalResponses: 0, topProblems: [] };
 
@@ -470,7 +530,9 @@ export async function getFacilityStats(facilityId: number, timeRange: 'week' | '
     count: p.count,
   }));
 
-  return { totalResponses, topProblems };
+  const payload = { totalResponses, topProblems };
+  statsCache.set(cacheKey("fstats", [facilityId, timeRange]), payload);
+  return payload;
 }
 
 /**

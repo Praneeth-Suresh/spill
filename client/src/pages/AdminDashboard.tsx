@@ -13,7 +13,8 @@ import { QRCodeCanvas } from "qrcode.react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
 
-type FacilityQuestion = inferRouterOutputs<AppRouter>["admin"]["getFacilityQuestions"][number];
+type FacilitySnapshot = inferRouterOutputs<AppRouter>["admin"]["getFacilitySnapshot"];
+type FacilityQuestion = FacilitySnapshot["questions"][number];
 
 /**
  * AdminDashboard displays aggregated feedback statistics and analytics.
@@ -37,17 +38,27 @@ export default function AdminDashboard() {
 
   const { data: facilities, isLoading: facilitiesLoading } = trpc.admin.getFacilities.useQuery(undefined, {
     enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getFacilityStats.useQuery(
+  const {
+    data: snapshot,
+    isLoading: snapshotLoading,
+    isFetching: snapshotFetching,
+    refetch: refetchSnapshot,
+  } = trpc.admin.getFacilitySnapshot.useQuery(
     { facilityId: selectedFacilityId!, timeRange },
-    { enabled: !!selectedFacilityId }
+    {
+      enabled: !!selectedFacilityId,
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      keepPreviousData: true,
+    }
   );
 
-  const { data: facilityQuestions, isLoading: questionsLoading, isFetching: questionsFetching } = trpc.admin.getFacilityQuestions.useQuery(
-    { facilityId: selectedFacilityId! },
-    { enabled: !!selectedFacilityId }
-  );
+  const stats = snapshot?.stats;
+  const facilityQuestions = snapshot?.questions ?? [];
 
   const exportMutation = trpc.admin.exportResponses.useMutation({
     onSuccess: (data) => {
@@ -263,7 +274,7 @@ export default function AdminDashboard() {
                     <SelectItem value="all">All Time</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="h-12" onClick={() => refetchStats()}>
+                <Button variant="outline" className="h-12" onClick={() => refetchSnapshot()}>
                   Refresh Stats
                 </Button>
               </div>
@@ -285,7 +296,7 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {statsLoading ? (
+                {(snapshotLoading && !stats) ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="animate-spin h-8 w-8" />
                   </div>
@@ -338,7 +349,7 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(questionsLoading || questionsFetching) && (
+                {(snapshotLoading || snapshotFetching) && (
                   <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2">
                     {Array.from({ length: 3 }).map((_, idx) => (
                       <div key={idx} className="w-64 flex-shrink-0 rounded-xl border bg-muted/40 animate-pulse h-[260px]" />
@@ -374,7 +385,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {!questionsLoading && facilityQuestions?.length === 0 && (
+                {!snapshotLoading && facilityQuestions?.length === 0 && (
                   <div className="text-sm text-muted-foreground">No questions found for this facility.</div>
                 )}
               </CardContent>
@@ -407,7 +418,7 @@ export default function AdminDashboard() {
                     Export as JSON
                   </Button>
                   <Button
-                    onClick={() => refetchStats()}
+                    onClick={() => refetchSnapshot()}
                     variant="outline"
                   >
                     Refresh Data

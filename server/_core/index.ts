@@ -9,6 +9,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { getDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,9 @@ function isInContainer() {
 
 async function startServer() {
   const app = express();
+
+  // Warm the database connection so the first request does not pay the connection setup cost
+  getDb().catch(err => console.warn("[Server] DB warmup failed:", err));
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {

@@ -9,6 +9,8 @@ import { Loader2 } from "lucide-react";
 import PointsBadge from "@/components/PointsBadge";
 import Disclaimer from "@/components/Disclaimer";
 
+import { useFeature } from "@/hooks/useGrowthBook";
+
 /**
  * QuestionPage displays a single question and handles user responses.
  * Supports multiple question types: poll, text, fill_blanks, file_upload.
@@ -32,6 +34,8 @@ export default function QuestionPage() {
     { questionId: questionId! },
     { enabled: !!questionId }
   );
+
+  const buttonColor = useFeature("button-color-test", "#CDFF00", "/question");
 
   const submitMutation = trpc.questions.submit.useMutation({
     onSuccess: (data) => {
@@ -280,6 +284,7 @@ export default function QuestionPage() {
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
+            style={{ backgroundColor: buttonColor }}
             className="spill-button w-full max-w-md mx-auto"
           >
             {isSubmitting ? (

@@ -20,27 +20,27 @@ export default function ResultsPage() {
 
   const { data: questionData, isLoading: questionLoading } = trpc.questions.getById.useQuery(
     { id: questionId! },
-    { enabled: !!questionId }
+    { enabled: !!questionId, staleTime: 60_000, refetchOnWindowFocus: false }
   );
 
   const { data: stats, isLoading: statsLoading } = trpc.admin.getQuestionStats.useQuery(
     { questionId: questionId! },
-    { enabled: !!questionId }
+    { enabled: !!questionId, staleTime: 60_000, refetchOnWindowFocus: false, keepPreviousData: true }
   );
 
   const { data: recentResponses } = trpc.admin.getRecentResponses.useQuery(
     { questionId: questionId!, limit: 5 },
-    { enabled: !!questionId && questionData?.question.type !== 'poll' }
+    { enabled: !!questionId && questionData?.question.type !== 'poll', staleTime: 30_000, refetchOnWindowFocus: false }
   );
 
   const { data: questionUpdates, isLoading: questionUpdatesLoading } = trpc.updates.byQuestion.useQuery(
     { questionId: questionId!, limit: 5 },
-    { enabled: !!questionId }
+    { enabled: !!questionId, staleTime: 30_000, refetchOnWindowFocus: false }
   );
 
   const { data: latestUpdates, isLoading: latestUpdatesLoading } = trpc.updates.latest.useQuery(
     { limit: 3 },
-    { enabled: !questionId }
+    { enabled: !questionId, staleTime: 30_000, refetchOnWindowFocus: false }
   );
 
   if (!hasQuestionContext) {
