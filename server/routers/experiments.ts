@@ -36,8 +36,8 @@ export const experimentsRouter = router({
       questionId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for'] || 'unknown';
-      const userAgent = ctx.req.headers['user-agent'] || '';
+      const ipAddress = ctx.ipAddress ?? 'unknown';
+      const userAgent = ctx.userAgent ?? '';
       
       await db.trackExposure({
         deviceId: input.deviceId,
@@ -46,8 +46,9 @@ export const experimentsRouter = router({
         variationId: input.variationId,
         pagePath: input.pagePath,
         questionId: input.questionId,
-        ipAddress: ipAddress as string,
+        ipAddress,
         userAgent,
+        exposedAt: new Date(),
       });
       
       return { success: true };
@@ -98,8 +99,8 @@ export const experimentsRouter = router({
         key: input.key,
         name: input.name,
         description: input.description,
-        variations: JSON.stringify(input.variations),
-        weights: input.weights ? JSON.stringify(input.weights) : null,
+        variations: input.variations,
+        weights: input.weights ?? null,
         coverage: input.coverage,
         pagePath: input.pagePath,
         questionId: input.questionId,

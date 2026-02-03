@@ -114,6 +114,8 @@ describe('Experiments Router', () => {
         } as any,
         res: {} as any,
         user: null,
+        ipAddress: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       const result = await caller.trackExposure({
@@ -287,8 +289,8 @@ describe('Experiments Router', () => {
         key: 'button-color-test',
         name: 'Button Color Test',
         description: 'Testing button colors',
-        variations: JSON.stringify(experimentInput.variations),
-        weights: JSON.stringify([0.5, 0.5]),
+        variations: experimentInput.variations,
+        weights: [0.5, 0.5],
         coverage: 100,
         pagePath: '/home',
         questionId: undefined,

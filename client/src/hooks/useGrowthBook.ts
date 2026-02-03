@@ -2,9 +2,22 @@ import { useEffect, useState } from 'react';
 import { GrowthBook } from '@growthbook/growthbook-react';
 import { trpc } from '@/lib/trpc';
 
+const getStoredId = (storage: Storage | null, key: string) => {
+  if (!storage) return '';
+  const existing = storage.getItem(key);
+  if (existing) return existing;
+
+  const generated = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  storage.setItem(key, generated);
+  return generated;
+};
+
 // Persistent identifiers for tracking users across sessions
-const DEVICE_ID = localStorage.getItem('device_id') || '';
-const SESSION_ID = sessionStorage.getItem('session_id') || '';
+const DEVICE_ID = getStoredId(typeof window !== 'undefined' ? window.localStorage : null, 'device_id');
+const SESSION_ID = getStoredId(typeof window !== 'undefined' ? window.sessionStorage : null, 'session_id');
 
 // Create a singleton GrowthBook instance to avoid recreating it on every render
 let gbInstance: GrowthBook | null = null;
@@ -50,20 +63,24 @@ export function useGrowthBook(pagePath?: string, questionId?: number) {
         },
         // This callback fires when a user is exposed to an experiment
         trackingCallback: (experiment, result) => {
-          console.log('Experiment exposure:', {
-            experimentKey: experiment.key,
-            variationId: result.key,
-          });
-          
-          // Send to your MySQL database
-          trackExposure.mutate({
-            deviceId: DEVICE_ID,
-            sessionId: SESSION_ID,
-            experimentKey: experiment.key,
-            variationId: result.key,
-            pagePath,
-            questionId,
-          });
+          try {
+            console.log('Experiment exposure:', {
+              experimentKey: experiment.key,
+              variationId: result.key,
+            });
+            
+            // Send to your MySQL database
+            trackExposure.mutate({
+              deviceId: DEVICE_ID,
+              sessionId: SESSION_ID,
+              experimentKey: experiment.key,
+              variationId: result.key,
+              pagePath,
+              questionId,
+            });
+          } catch (error) {
+            console.error('Experiment tracking error:', error);
+          }
         },
       });
       
@@ -103,8 +120,13 @@ export function useFeature<T = any>(featureKey: string, defaultValue: T, pagePat
   useEffect(() => {
     if (!gb || loading) return;
     
-    const featureValue = gb.getFeatureValue(featureKey, defaultValue);
-    setValue(featureValue as T);
+    try {
+      const featureValue = gb.getFeatureValue(featureKey, defaultValue);
+      setValue(featureValue as T);
+    } catch (error) {
+      console.error('GrowthBook feature evaluation error:', error);
+      setValue(defaultValue);
+    }
     
     // Listen for feature changes
     const unsubscribe = gb.subscribe(() => {

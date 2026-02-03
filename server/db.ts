@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -160,13 +160,21 @@ export async function hasIpActivityToday(ipAddress: string, now: Date = new Date
   const db = await getDb();
   if (!db) return false;
 
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
+  // Use UTC start-of-day to ensure consistent gating across environments
+  const startOfDayUtc = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  ));
 
   const result = await db
     .select({ exists: sql`1` })
     .from(ipAddresses)
-    .where(and(eq(ipAddresses.ipAddress, ipAddress), gte(ipAddresses.updatedAt, startOfDay)))
+    .where(and(eq(ipAddresses.ipAddress, ipAddress), gte(ipAddresses.updatedAt, startOfDayUtc)))
     .limit(1);
 
   return result.length > 0;
@@ -720,8 +728,8 @@ export async function getActiveExperiments(pagePath?: string, questionId?: numbe
     .where(
       and(
         eq(experiments.isActive, true),
-        pagePath ? eq(experiments.pagePath, pagePath) : undefined,
-        questionId ? eq(experiments.questionId, questionId) : undefined
+        pagePath ? or(eq(experiments.pagePath, pagePath), isNull(experiments.pagePath)) : undefined,
+        questionId ? or(eq(experiments.questionId, questionId), isNull(experiments.questionId)) : undefined
       )
     );
 }
@@ -739,13 +747,44 @@ export async function getGrowthBookConfig(pagePath?: string, questionId?: number
   
   // Transform to GrowthBook format
   const features: Record<string, any> = {};
+
+  const parseJsonArray = <T = any>(value: unknown): T[] => {
+    if (Array.isArray(value)) return value as T[];
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const parseJsonValue = <T = any>(value: unknown): T | undefined => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return undefined;
+      }
+    }
+    return value as T;
+  };
   
   for (const exp of activeExperiments) {
     // Parse JSON fields with proper type checking
-    const variations = Array.isArray(exp.variations) ? exp.variations : [];
-    const weights = Array.isArray(exp.weights) ? exp.weights : undefined;
-    const condition = exp.condition ? exp.condition : undefined;
+    const variations = parseJsonArray(exp.variations);
+    const weights = parseJsonArray(exp.weights);
+    const condition = parseJsonValue(exp.condition);
     const coverage = typeof exp.coverage === 'number' ? exp.coverage : 100;
+
+    if (variations.length === 0) {
+      continue;
+    }
+
+    const parsedWeights = weights.length === variations.length ? weights : undefined;
     
     features[exp.key] = {
       defaultValue: variations[0]?.value || null,
@@ -753,14 +792,8 @@ export async function getGrowthBookConfig(pagePath?: string, questionId?: number
         {
           condition: condition,
           coverage: coverage / 100, // Convert to 0-1 range
-          weights: weights,
+          weights: parsedWeights,
           variations: variations.map((v: any) => v.value),
-          key: exp.key,
-          // Add experiment metadata for tracking
-          meta: {
-            experimentId: exp.id,
-            experimentName: exp.name,
-          },
         },
       ],
     };
