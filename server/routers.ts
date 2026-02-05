@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import type { TrpcContext } from "./_core/context";
 import { responses } from "../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
+import { experimentsRouter } from "./routers/experiments";
 
 /**
  * Admin-only procedure that checks if user has admin or super_admin role.
@@ -378,6 +379,31 @@ export const appRouter = router({
       }),
 
     /**
+     * Combined facility snapshot that batches stats and questions.
+     * Reduces round trips from the admin dashboard.
+     */
+    getFacilitySnapshot: adminProcedure
+      .input(z.object({
+        facilityId: z.number(),
+        timeRange: z.enum(['week', 'month', 'all']).default('week'),
+      }))
+      .query(async ({ input, ctx }) => {
+        const facilities = await db.getUserFacilities(ctx.user.id, ctx.user.role);
+        const hasAccess = facilities.some(f => f.id === input.facilityId);
+
+        if (!hasAccess) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this facility' });
+        }
+
+        const [stats, questions] = await Promise.all([
+          db.getFacilityStats(input.facilityId, input.timeRange),
+          db.getAllQuestionsByFacility(input.facilityId),
+        ]);
+
+        return { stats, questions } as const;
+      }),
+
+    /**
      * Get question statistics (response counts and breakdowns).
      */
     getQuestionStats: adminProcedure
@@ -494,6 +520,11 @@ export const appRouter = router({
         return await db.getFacilityAdmins(input.facilityId);
       }),
   }),
+  
+  /**
+   * Experiments router for A/B testing
+   */
+  experiments: experimentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

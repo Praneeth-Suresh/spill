@@ -10,6 +10,7 @@ import ResultsPage from "./pages/ResultsPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import FacilityDashboard from "./pages/FacilityDashboard";
 import UpdatesPage from "./pages/UpdatesPage";
+import AdminExperimentsPage from "./pages/AdminExperimentsPage";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path={"/updates/:id"} component={UpdatesPage} />
       <Route path={"/updates"} component={UpdatesPage} />
       <Route path={"/404"} component={NotFound} />
+      <Route path={"/admin/experiments"} component={AdminExperimentsPage} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>

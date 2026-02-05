@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -8,23 +8,70 @@ import {
   questionOptions,
   responses,
   responseAnswers,
-  uploadedFiles,
   adminFacilities,
-  questionBranching,
   points,
   ipAddresses,
   updates,
+  experiments,
+  experimentExposures,
   type Facility,
   type Question,
   type QuestionOption,
-  type Response,
-  type ResponseAnswer,
-  type AdminFacility,
   type Update,
+  type InsertExperimentExposure,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+
+class TtlCache<T> {
+  constructor(private ttlMs: number, private maxEntries: number) {}
+  private cache = new Map<string, CacheEntry<T>>();
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  set(key: string, value: T) {
+    if (!this.cache.has(key) && this.cache.size >= this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+  }
+
+  clear(prefix?: string) {
+    if (!prefix) {
+      this.cache.clear();
+      return;
+    }
+
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+const STATS_CACHE_TTL_MS = 60_000; // 1 minute cache to hide DB latency for hot queries
+const STATS_CACHE_MAX_ENTRIES = 200;
+const statsCache = new TtlCache<any>(STATS_CACHE_TTL_MS, STATS_CACHE_MAX_ENTRIES);
+
+const cacheKey = (prefix: string, parts: unknown[]) => `${prefix}:${parts.map(p => JSON.stringify(p)).join(":")}`;
+
+const clearStatsCache = () => {
+  statsCache.clear("qstats:");
+  statsCache.clear("fstats:");
+};
 
 // Ensure MySQL connections allow multiple statements so multi-statement migrations work.
 function ensureMultiStatements(url: string): string {
@@ -113,13 +160,21 @@ export async function hasIpActivityToday(ipAddress: string, now: Date = new Date
   const db = await getDb();
   if (!db) return false;
 
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
+  // Use UTC start-of-day to ensure consistent gating across environments
+  const startOfDayUtc = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  ));
 
   const result = await db
     .select({ exists: sql`1` })
     .from(ipAddresses)
-    .where(and(eq(ipAddresses.ipAddress, ipAddress), gte(ipAddresses.updatedAt, startOfDay)))
+    .where(and(eq(ipAddresses.ipAddress, ipAddress), gte(ipAddresses.updatedAt, startOfDayUtc)))
     .limit(1);
 
   return result.length > 0;
@@ -341,6 +396,9 @@ export async function submitResponse(
     });
   }
 
+  // Invalidate cached stats so subsequent reads reflect the new response
+  clearStatsCache();
+
   return responseId;
 }
 
@@ -352,6 +410,9 @@ export async function getQuestionStats(questionId: number): Promise<{
   totalResponses: number;
   optionStats: Array<{ optionId: number; optionText: string; count: number }>;
 }> {
+  const cacheHit = statsCache.get(cacheKey("qstats", [questionId]));
+  if (cacheHit) return cacheHit;
+
   const db = await getDb();
   if (!db) return { totalResponses: 0, optionStats: [] };
 
@@ -381,7 +442,9 @@ export async function getQuestionStats(questionId: number): Promise<{
     count: stat.count,
   }));
 
-  return { totalResponses, optionStats };
+  const payload = { totalResponses, optionStats };
+  statsCache.set(cacheKey("qstats", [questionId]), payload);
+  return payload;
 }
 
 /**
@@ -426,6 +489,9 @@ export async function getFacilityStats(facilityId: number, timeRange: 'week' | '
   totalResponses: number;
   topProblems: Array<{ problem: string; count: number }>;
 }> {
+  const cacheHit = statsCache.get(cacheKey("fstats", [facilityId, timeRange]));
+  if (cacheHit) return cacheHit;
+
   const db = await getDb();
   if (!db) return { totalResponses: 0, topProblems: [] };
 
@@ -472,7 +538,9 @@ export async function getFacilityStats(facilityId: number, timeRange: 'week' | '
     count: p.count,
   }));
 
-  return { totalResponses, topProblems };
+  const payload = { totalResponses, topProblems };
+  statsCache.set(cacheKey("fstats", [facilityId, timeRange]), payload);
+  return payload;
 }
 
 /**
@@ -641,4 +709,190 @@ export async function updateUserById(id: number, data: Partial<Omit<InsertUser, 
   }
   if (Object.keys(updateSet).length === 0) return;
   await db.update(users).set(updateSet).where(eq(users.id, id));
+}
+
+/**
+ * Get all active experiments for a specific page/question
+ * 
+ * @param pagePath - Optional page path to filter experiments
+ * @param questionId - Optional question ID to filter experiments
+ * @returns Array of active experiments matching the criteria
+ */
+export async function getActiveExperiments(pagePath?: string, questionId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(experiments)
+    .where(
+      and(
+        eq(experiments.isActive, true),
+        pagePath ? or(eq(experiments.pagePath, pagePath), isNull(experiments.pagePath)) : undefined,
+        questionId ? or(eq(experiments.questionId, questionId), isNull(experiments.questionId)) : undefined
+      )
+    );
+}
+
+/**
+ * Get GrowthBook-compatible configuration for all active experiments
+ * Transforms database experiment records into GrowthBook feature format
+ * 
+ * @param pagePath - Optional page path to filter experiments
+ * @param questionId - Optional question ID to filter experiments
+ * @returns GrowthBook features configuration object
+ */
+export async function getGrowthBookConfig(pagePath?: string, questionId?: number) {
+  const activeExperiments = await getActiveExperiments(pagePath, questionId);
+  
+  // Transform to GrowthBook format
+  const features: Record<string, any> = {};
+
+  const parseJsonArray = <T = any>(value: unknown): T[] => {
+    if (Array.isArray(value)) return value as T[];
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const parseJsonValue = <T = any>(value: unknown): T | undefined => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return undefined;
+      }
+    }
+    return value as T;
+  };
+  
+  for (const exp of activeExperiments) {
+    // Parse JSON fields with proper type checking
+    const variations = parseJsonArray(exp.variations);
+    const weights = parseJsonArray(exp.weights);
+    const condition = parseJsonValue(exp.condition);
+    const coverage = typeof exp.coverage === 'number' ? exp.coverage : 100;
+
+    if (variations.length === 0) {
+      continue;
+    }
+
+    const parsedWeights = weights.length === variations.length ? weights : undefined;
+    
+    features[exp.key] = {
+      defaultValue: variations[0]?.value || null,
+      rules: [
+        {
+          condition: condition,
+          coverage: coverage / 100, // Convert to 0-1 range
+          weights: parsedWeights,
+          variations: variations.map((v: any) => v.value),
+        },
+      ],
+    };
+  }
+  
+  return { features };
+}
+
+/**
+ * Track experiment exposure
+ * Records when a user is exposed to a specific experiment variation
+ * 
+ * @param exposure - Exposure data including device ID, experiment key, variation, etc.
+ */
+export async function trackExposure(exposure: InsertExperimentExposure) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.insert(experimentExposures).values(exposure);
+}
+
+/**
+ * Get experiment results for analysis
+ * Calculates exposure and conversion counts by variation
+ * 
+ * @param experimentKey - The unique key of the experiment to analyze
+ * @returns Object containing exposure and conversion data by variation
+ * 
+ * @example
+ * ```ts
+ * const results = await getExperimentResults('button-color-test');
+ * // results = {
+ * //   exposures: [{ variationId: '0', count: 100 }, { variationId: '1', count: 98 }],
+ * //   conversions: [{ variationId: '0', count: 25 }, { variationId: '1', count: 32 }]
+ * // }
+ * ```
+ */
+/**
+ * List all experiments
+ */
+export async function listExperiments() {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  const allExperiments = await db
+    .select({
+      key: experiments.key,
+      name: experiments.name,
+      description: experiments.description,
+      isActive: experiments.isActive,
+      createdAt: experiments.createdAt,
+    })
+    .from(experiments)
+    .orderBy(desc(experiments.createdAt));
+  
+  return allExperiments;
+}
+
+/**
+ * Get experiment results for analysis
+ * Returns exposure counts and conversion data by variation
+ * 
+ * @param experimentKey - The unique identifier for the experiment
+ * @returns Object containing exposures and conversions by variation
+ */
+export async function getExperimentResults(experimentKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  // Get exposure counts by variation
+  const exposures = await db
+    .select({
+      variationId: experimentExposures.variationId,
+      count: sql<number>`COUNT(DISTINCT ${experimentExposures.deviceId})`,
+    })
+    .from(experimentExposures)
+    .where(eq(experimentExposures.experimentKey, experimentKey))
+    .groupBy(experimentExposures.variationId);
+  
+  // Get conversion data (submissions) by joining with responses table
+  // This tracks users who were exposed to an experiment AND submitted a response
+  const conversions = await db
+    .select({
+      variationId: experimentExposures.variationId,
+      count: sql<number>`COUNT(DISTINCT ${experimentExposures.deviceId})`,
+    })
+    .from(experimentExposures)
+    .innerJoin(
+      responses,
+      and(
+        eq(experimentExposures.ipAddress, responses.ipAddress),
+        sql`${experimentExposures.exposedAt} <= ${responses.submittedAt}`
+      )
+    )
+    .where(eq(experimentExposures.experimentKey, experimentKey))
+    .groupBy(experimentExposures.variationId);
+  
+  return {
+    exposures,
+    conversions,
+  };
 }

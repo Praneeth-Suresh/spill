@@ -23,19 +23,28 @@ export default function FacilityDashboard() {
 
   const { data: facilities } = trpc.admin.getFacilities.useQuery(undefined, {
     enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const facility = facilities?.find(f => f.code.toLowerCase() === facilityCode?.toLowerCase());
 
-  const { data: stats, refetch: refetchStats } = trpc.admin.getFacilityStats.useQuery(
+  const {
+    data: snapshot,
+    isLoading: snapshotLoading,
+    refetch: refetchSnapshot,
+  } = trpc.admin.getFacilitySnapshot.useQuery(
     { facilityId: facility?.id!, timeRange },
-    { enabled: !!facility }
+    {
+      enabled: !!facility,
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      keepPreviousData: true,
+    }
   );
 
-  const { data: questions } = trpc.questions.getByFacility.useQuery(
-    { facilityId: facility?.id! },
-    { enabled: !!facility }
-  );
+  const stats = snapshot?.stats;
+  const questions = (snapshot?.questions ?? []).filter(q => q.isActive);
 
   const exportMutation = trpc.admin.exportResponses.useMutation({
     onSuccess: (data) => {
@@ -127,6 +136,11 @@ export default function FacilityDashboard() {
 
       {/* Main Content */}
       <div className="container py-8 space-y-6">
+        {snapshotLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin h-6 w-6" />
+          </div>
+        )}
         {/* Overview Stats */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -231,7 +245,7 @@ export default function FacilityDashboard() {
                 <Download className="mr-2 h-4 w-4" />
                 Export as JSON
               </Button>
-              <Button onClick={() => refetchStats()} variant="outline">
+              <Button onClick={() => refetchSnapshot()} variant="outline">
                 Refresh Data
               </Button>
             </div>

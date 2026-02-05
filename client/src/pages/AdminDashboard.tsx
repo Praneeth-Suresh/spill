@@ -13,7 +13,8 @@ import { QRCodeCanvas } from "qrcode.react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
 
-type FacilityQuestion = inferRouterOutputs<AppRouter>["admin"]["getFacilityQuestions"][number];
+type FacilitySnapshot = inferRouterOutputs<AppRouter>["admin"]["getFacilitySnapshot"];
+type FacilityQuestion = FacilitySnapshot["questions"][number];
 
 /**
  * AdminDashboard displays aggregated feedback statistics and analytics.
@@ -28,26 +29,34 @@ export default function AdminDashboard() {
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(10);
   const [qrPreviewQuestion, setQrPreviewQuestion] = useState<FacilityQuestion | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [qrReady, setQrReady] = useState(false);
-  const [qrDownloadUrl, setQrDownloadUrl] = useState<string | null>(null);
+  const qrCanvasRef = useRef<QRCodeCanvas | null>(null);
 
   const domain = (import.meta.env.VITE_DOMAIN as string | undefined)?.replace(/\/$/, "") || window.location.origin;
   const buildResultsUrl = (questionId: number) => `${domain}/results/${questionId}`;
 
   const { data: facilities, isLoading: facilitiesLoading } = trpc.admin.getFacilities.useQuery(undefined, {
     enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getFacilityStats.useQuery(
+  const {
+    data: snapshot,
+    isLoading: snapshotLoading,
+    isFetching: snapshotFetching,
+    refetch: refetchSnapshot,
+  } = trpc.admin.getFacilitySnapshot.useQuery(
     { facilityId: selectedFacilityId!, timeRange },
-    { enabled: !!selectedFacilityId }
+    {
+      enabled: !!selectedFacilityId,
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      keepPreviousData: true,
+    }
   );
 
-  const { data: facilityQuestions, isLoading: questionsLoading, isFetching: questionsFetching } = trpc.admin.getFacilityQuestions.useQuery(
-    { facilityId: selectedFacilityId! },
-    { enabled: !!selectedFacilityId }
-  );
+  const stats = snapshot?.stats;
+  const facilityQuestions = snapshot?.questions ?? [];
 
   const exportMutation = trpc.admin.exportResponses.useMutation({
     onSuccess: (data) => {
@@ -81,7 +90,7 @@ export default function AdminDashboard() {
   };
 
   const handleDownloadQr = () => {
-    const dataUrl = qrDownloadUrl || qrCanvasRef.current?.toDataURL("image/png");
+    const dataUrl = qrCanvasRef.current?.toDataURL?.("image/png");
     if (!dataUrl || !qrPreviewQuestion) return;
 
     const link = document.createElement('a');
@@ -117,24 +126,6 @@ export default function AdminDashboard() {
   }, [selectedFacilityId]);
 
   // Prepare QR download once the modal canvas is ready
-  useEffect(() => {
-    if (!isQrModalOpen || !qrPreviewQuestion) {
-      setQrReady(false);
-      setQrDownloadUrl(null);
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      const canvas = qrCanvasRef.current;
-      if (canvas) {
-        setQrReady(true);
-        setQrDownloadUrl(canvas.toDataURL("image/png"));
-      }
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [isQrModalOpen, qrPreviewQuestion]);
-
   // Redirect to login if not authenticated
   if (authLoading) {
     return (
@@ -192,10 +183,15 @@ export default function AdminDashboard() {
                 Welcome back, {user.name || 'Admin'}
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setLocation("/admin/experiments")}>
+                A/B Experiments
+              </Button>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -258,7 +254,7 @@ export default function AdminDashboard() {
                     <SelectItem value="all">All Time</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="h-12" onClick={() => refetchStats()}>
+                <Button variant="outline" className="h-12" onClick={() => refetchSnapshot()}>
                   Refresh Stats
                 </Button>
               </div>
@@ -280,7 +276,7 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {statsLoading ? (
+                {(snapshotLoading && !stats) ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="animate-spin h-8 w-8" />
                   </div>
@@ -333,7 +329,7 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(questionsLoading || questionsFetching) && (
+                {(snapshotLoading || snapshotFetching) && (
                   <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2">
                     {Array.from({ length: 3 }).map((_, idx) => (
                       <div key={idx} className="w-64 flex-shrink-0 rounded-xl border bg-muted/40 animate-pulse h-[260px]" />
@@ -369,7 +365,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {!questionsLoading && facilityQuestions?.length === 0 && (
+                {!snapshotLoading && facilityQuestions?.length === 0 && (
                   <div className="text-sm text-muted-foreground">No questions found for this facility.</div>
                 )}
               </CardContent>
@@ -402,7 +398,7 @@ export default function AdminDashboard() {
                     Export as JSON
                   </Button>
                   <Button
-                    onClick={() => refetchStats()}
+                    onClick={() => refetchSnapshot()}
                     variant="outline"
                   >
                     Refresh Data
@@ -466,16 +462,12 @@ export default function AdminDashboard() {
           <div className="flex flex-col items-center gap-4">
             <div className="rounded-lg border p-4">
               {qrPreviewQuestion ? (
-                qrReady ? (
-                  <QRCodeCanvas
-                    ref={qrCanvasRef}
-                    value={buildResultsUrl(qrPreviewQuestion.id)}
-                    size={260}
-                    includeMargin
-                  />
-                ) : (
-                  <div className="h-[260px] w-[260px] rounded-md bg-muted" />
-                )
+                <QRCodeCanvas
+                  ref={qrCanvasRef}
+                  value={buildResultsUrl(qrPreviewQuestion.id)}
+                  size={260}
+                  includeMargin
+                />
               ) : (
                 <div className="h-[260px] w-[260px] rounded-md bg-muted" />
               )}
@@ -486,7 +478,7 @@ export default function AdminDashboard() {
                 <p className="font-medium">spill_{qrPreviewQuestion?.id ?? ""}_QR.png</p>
                 <p className="text-sm text-muted-foreground">PNG download</p>
               </div>
-              <Button onClick={handleDownloadQr} disabled={!qrPreviewQuestion || !qrReady}>
+              <Button onClick={handleDownloadQr} disabled={!qrPreviewQuestion}>
                 <ImageDown className="mr-2 h-4 w-4" />
                 Download
               </Button>
