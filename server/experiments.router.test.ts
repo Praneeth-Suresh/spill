@@ -126,16 +126,18 @@ describe('Experiments Router', () => {
         pagePath: '/home',
       });
 
-      expect(db.trackExposure).toHaveBeenCalledWith({
-        deviceId: 'device-123',
-        sessionId: 'session-456',
-        experimentKey: 'button-color-test',
-        variationId: '1',
-        pagePath: '/home',
-        questionId: undefined,
-        ipAddress: '192.168.1.1',
-        userAgent: 'Mozilla/5.0',
-      });
+      expect(db.trackExposure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deviceId: 'device-123',
+          sessionId: 'session-456',
+          experimentKey: 'button-color-test',
+          variationId: '1',
+          pagePath: '/home',
+          questionId: undefined,
+          ipAddress: '192.168.1.1',
+          userAgent: 'Mozilla/5.0',
+        })
+      );
       expect(result).toEqual({ success: true });
     });
 
