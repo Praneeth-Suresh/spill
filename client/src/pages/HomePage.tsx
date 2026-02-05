@@ -127,9 +127,9 @@ export default function HomePage() {
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => setLocation("/question/3")}
+              onClick={() => setLocation("/question/6")}
             >
-              🔧 Report equipment issue
+              🦉 Let's talk about Noctua
             </Button>
             <Button
               variant="outline"

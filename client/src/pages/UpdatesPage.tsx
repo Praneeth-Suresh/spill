@@ -127,23 +127,32 @@ export default function UpdatesPage() {
       </div> */}
 
       <div className="spill-card space-y-4">
-        <h3 className="font-semibold mb-2">spill?</h3>
+        <h3 className="font-semibold mb-2">Thank you for the spill!</h3>
         <div className="text-sm text-muted-foreground mb-2">
           A bit more about what we do!
         </div>
 
         <div className="text-base leading-relaxed text-gray-800 space-y-3">
           <p>
-            <i>spill</i> is a platform for gathering <b>feedback</b> and
-            sharing <b>updates</b> in a transparent way.
-            When you submit responses to questions, your 
-            feedback helps shape improvements and changes.
+            <i>We</i> are building a space for <i>you</i> to share about your hopes and problems. 
+            We hope to close the loop where feedback turns into change that you can see.
           </p>
           <p>
-            Updates are posted in <i>real-time</i> as feedback is collected 
-            and processed.
-            This way, you can see how your input contributes to
-            positive changes.
+            See what's happening with your feedback on our 
+            <a
+              href="https://t.me/spilltoday"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: "oklch(0.95 0.25 127)",
+                color: "#000", // or use a variable for best contrast
+                padding: "0 4px",
+                borderRadius: "4px"
+              }}
+            >
+              Telegram channel (join by clicking here)
+            </a>
+            !
           </p>
           <p><i>
             Thank you for being part of the spill community!
