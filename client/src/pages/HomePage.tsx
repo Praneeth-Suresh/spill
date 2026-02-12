@@ -129,14 +129,14 @@ export default function HomePage() {
               className="w-full justify-start"
               onClick={() => setLocation("/question/6")}
             >
-              🦉 Let's talk about Noctua
+              🐳 Let's talk about RC4
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => setLocation("/question/4")}
+              onClick={() => setLocation("/question/7")}
             >
-              🎨 Suggest activities
+              🎨 Want to spill?
             </Button>
           </div>
         </div>

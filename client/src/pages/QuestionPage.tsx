@@ -180,7 +180,7 @@ export default function QuestionPage() {
 
       <div className="spill-card space-y-4 text-center max-w-xl mx-auto">
         <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {question.facilityId === 1 ? 'Oasis' : 'Facility'}
+          {question.facilityId <= 5 ? 'RC4' : 'General'}
         </div>
 
         <h2 className="text-2xl sm:text-3xl font-bold leading-tight">{question.title}</h2>
