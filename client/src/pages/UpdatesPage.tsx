@@ -5,6 +5,7 @@ import Disclaimer from "@/components/Disclaimer";
 import UpdatesCard from "@/components/UpdatesCard";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
+import { useFeature } from "@/hooks/useGrowthBook";
 
 const FALLBACK_MESSAGE = "All your feedback has collected and is being processed. Magic is happening! We'll let you know when the results are ready.";
 
@@ -48,6 +49,16 @@ export default function UpdatesPage() {
     { enabled: !!questionId }
   );
 
+  // A/B test: hide updates card for questions 6 and 7
+  const showUpdatesQ6 = useFeature("hide-question-updates-q6", true, undefined, 6);
+  const showUpdatesQ7 = useFeature("hide-question-updates-q7", true, undefined, 7);
+  
+  // Determine if we should show the updates card based on question ID
+  const shouldShowUpdatesCard = !questionId || 
+    (questionId !== 6 && questionId !== 7) || 
+    (questionId === 6 && showUpdatesQ6) || 
+    (questionId === 7 && showUpdatesQ7);
+
   useEffect(() => {
     if (error?.data?.code === "FORBIDDEN") {
       setLocation("/");
@@ -68,23 +79,25 @@ export default function UpdatesPage() {
       </div>
 
       {/* Question-specific updates card */}
-      <div className="mb-6">
-        {questionId ? (
-          <UpdatesCard
-            title="Updates for this question"
-            updates={questionUpdates}
-            isLoading={questionUpdatesLoading && !questionUpdates}
-            emptyText="No updates for this question yet."
-          />
-        ) : (
-          <div className="spill-card">
-            <h3 className="font-semibold mb-2">Question-specific updates</h3>
-            <p className="text-sm text-muted-foreground">
-              Open a question and submit a response to see its updates here.
-            </p>
-          </div>
-        )}
-      </div>
+      {shouldShowUpdatesCard && (
+        <div className="mb-6">
+          {questionId ? (
+            <UpdatesCard
+              title="Updates for this question"
+              updates={questionUpdates}
+              isLoading={questionUpdatesLoading && !questionUpdates}
+              emptyText="No updates for this question yet."
+            />
+          ) : (
+            <div className="spill-card">
+              <h3 className="font-semibold mb-2">Question-specific updates</h3>
+              <p className="text-sm text-muted-foreground">
+                Open a question and submit a response to see its updates here.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Elsewhere on spill */}
       {/* <div className="spill-card space-y-4">

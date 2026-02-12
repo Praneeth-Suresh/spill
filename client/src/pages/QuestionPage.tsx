@@ -11,6 +11,8 @@ import Disclaimer from "@/components/Disclaimer";
 
 import { useFeature } from "@/hooks/useGrowthBook";
 
+const GOOGLE_FORM_URL = "https://forms.gle/placeholder";
+
 /**
  * QuestionPage displays a single question and handles user responses.
  * Supports multiple question types: poll, text, fill_blanks, file_upload.
@@ -36,6 +38,33 @@ export default function QuestionPage() {
   );
 
   const buttonColor = useFeature("button-color-test", "#CDFF00", "/question");
+  const questionRedirectVariant = useFeature<"redirect" | "in-app">(
+    "question-redirect-7",
+    "in-app",
+    "/question",
+    questionId ?? undefined
+  );
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => {
+    if (questionId !== 7) return;
+    if (questionRedirectVariant !== "redirect") return;
+    if (isRedirecting) return;
+    if (typeof window === "undefined") return;
+
+    const storageKey = "spill-question-7-redirected";
+    if (window.sessionStorage.getItem(storageKey)) return;
+
+    window.sessionStorage.setItem(storageKey, new Date().toISOString());
+
+    setIsRedirecting(true);
+    console.info("Redirecting user to placeholder Google Form", {
+      questionId,
+      variant: questionRedirectVariant,
+      experiment: "question-redirect-7",
+    });
+    window.location.replace(GOOGLE_FORM_URL);
+  }, [questionId, questionRedirectVariant, isRedirecting]);
 
   const submitMutation = trpc.questions.submit.useMutation({
     onSuccess: (data) => {
