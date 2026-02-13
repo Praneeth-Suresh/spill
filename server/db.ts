@@ -722,7 +722,7 @@ export async function getActiveExperiments(pagePath?: string, questionId?: numbe
   const db = await getDb();
   if (!db) return [];
 
-  return db
+  const results = await db
     .select()
     .from(experiments)
     .where(
@@ -732,6 +732,8 @@ export async function getActiveExperiments(pagePath?: string, questionId?: numbe
         questionId ? or(eq(experiments.questionId, questionId), isNull(experiments.questionId)) : undefined
       )
     );
+
+  return results;
 }
 
 /**
@@ -774,6 +776,10 @@ export async function getGrowthBookConfig(pagePath?: string, questionId?: number
   };
   
   for (const exp of activeExperiments) {
+    if (exp.key === 'question-8-9-split' && exp.questionId !== 10) {
+      continue;
+    }
+
     // Parse JSON fields with proper type checking
     const variations = parseJsonArray(exp.variations);
     const weights = parseJsonArray(exp.weights);
@@ -785,15 +791,36 @@ export async function getGrowthBookConfig(pagePath?: string, questionId?: number
     }
 
     const parsedWeights = weights.length === variations.length ? weights : undefined;
+
+    const isQuestionSplit = exp.key === 'question-8-9-split';
+    const splitVariations = isQuestionSplit
+      ? variations.map((v: any) => Number(v?.value)).filter((v: number) => Number.isFinite(v))
+      : [];
+    const validSplitVariations = isQuestionSplit
+      ? splitVariations.length === 2 && splitVariations.includes(8) && splitVariations.includes(9)
+      : false;
+    const ruleVariations = validSplitVariations
+      ? splitVariations
+      : variations.map((v: any) => v.value);
+    const ruleWeights = isQuestionSplit
+      ? [0.5, 0.5]
+      : parsedWeights;
+    const defaultValue = isQuestionSplit
+      ? 8
+      : variations[0]?.value || null;
+    const ruleCondition = isQuestionSplit
+      ? undefined
+      : condition;
     
     features[exp.key] = {
-      defaultValue: variations[0]?.value || null,
+      defaultValue,
       rules: [
         {
-          condition: condition,
+          key: exp.key,
+          condition: ruleCondition,
           coverage: coverage / 100, // Convert to 0-1 range
-          weights: parsedWeights,
-          variations: variations.map((v: any) => v.value),
+          weights: ruleWeights,
+          variations: ruleVariations,
         },
       ],
     };

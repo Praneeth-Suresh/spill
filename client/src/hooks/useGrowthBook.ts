@@ -64,11 +64,6 @@ export function useGrowthBook(pagePath?: string, questionId?: number) {
         // This callback fires when a user is exposed to an experiment
         trackingCallback: (experiment, result) => {
           try {
-            console.log('Experiment exposure:', {
-              experimentKey: experiment.key,
-              variationId: result.key,
-            });
-            
             // Send to your MySQL database
             trackExposure.mutate({
               deviceId: DEVICE_ID,
@@ -86,6 +81,14 @@ export function useGrowthBook(pagePath?: string, questionId?: number) {
       
       setGb(gbInstance);
     }
+
+    gbInstance.setAttributes({
+      id: DEVICE_ID,
+      deviceId: DEVICE_ID,
+      sessionId: SESSION_ID,
+      pagePath,
+      questionId,
+    });
     
     // Load features from your config
     gbInstance.setFeatures(config.features);

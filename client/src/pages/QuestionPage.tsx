@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useRoute, useLocation, Link } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,8 @@ import Disclaimer from "@/components/Disclaimer";
 
 import { useFeature } from "@/hooks/useGrowthBook";
 
-const GOOGLE_FORM_URL = "https://forms.gle/placeholder";
+const GOOGLE_FORM_URL = "https://forms.gle/aUCzZSgGva3S2Ywv7";
+const QUESTION_SPLIT_FALLBACK_ID = 8;
 
 /**
  * QuestionPage displays a single question and handles user responses.
@@ -44,8 +45,15 @@ export default function QuestionPage() {
     "/question",
     questionId ?? undefined
   );
+  const questionSplitTarget = useFeature<number | null>(
+    "question-8-9-split",
+    null,
+    "/question",
+    questionId ?? undefined
+  );
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // AB Test: Google Form redirect for question 7
   useEffect(() => {
     if (questionId !== 7) return;
     if (questionRedirectVariant !== "redirect") return;
@@ -65,6 +73,44 @@ export default function QuestionPage() {
     });
     window.location.replace(GOOGLE_FORM_URL);
   }, [questionId, questionRedirectVariant, isRedirecting]);
+
+  // AB Test: Question split for questions 8/9 (entry point: question 10)
+  useEffect(() => {
+    if (questionId !== 10) return; // Only activate on entry question
+    if (typeof window === "undefined") return;
+
+    const storageKey = `spill-question-split-${questionId}`;
+    if (import.meta.env.DEV) {
+      const shouldReset = new URLSearchParams(window.location.search).get("resetSplit10") === "1";
+      if (shouldReset) {
+        window.sessionStorage.removeItem(storageKey);
+      }
+    }
+
+    // Handle both number and string values from GrowthBook
+    const parsedTarget = typeof questionSplitTarget === "number"
+      ? questionSplitTarget
+      : typeof questionSplitTarget === "string"
+      ? parseInt(questionSplitTarget, 10)
+      : NaN;
+
+    const isAllowedTarget = Number.isFinite(parsedTarget) && (parsedTarget === 8 || parsedTarget === 9);
+    const targetId = isAllowedTarget ? parsedTarget : QUESTION_SPLIT_FALLBACK_ID;
+
+    if (isRedirecting) return;
+
+    const alreadyRedirected = window.sessionStorage.getItem(storageKey);
+    
+    if (alreadyRedirected) return;
+
+    window.sessionStorage.setItem(storageKey, JSON.stringify({
+      targetQuestion: targetId,
+      timestamp: new Date().toISOString(),
+    }));
+
+    setIsRedirecting(true);
+    setLocation(`/question/${targetId}`);
+  }, [questionId, questionSplitTarget, isRedirecting, setLocation]);
 
   const submitMutation = trpc.questions.submit.useMutation({
     onSuccess: (data) => {

@@ -83,16 +83,16 @@ export default function UpdatesPage() {
         <div className="mb-6">
           {questionId ? (
             <UpdatesCard
-              title="Updates for this question"
+              title="What's been spilt?"
               updates={questionUpdates}
               isLoading={questionUpdatesLoading && !questionUpdates}
-              emptyText="No updates for this question yet."
+              emptyText="Hold tight! As responses come in, we'll keep you posted!"
             />
           ) : (
             <div className="spill-card">
               <h3 className="font-semibold mb-2">Question-specific updates</h3>
               <p className="text-sm text-muted-foreground">
-                Open a question and submit a response to see its updates here.
+                Open a question and submit a response to see what's been spilt here.
               </p>
             </div>
           )}
@@ -147,8 +147,8 @@ export default function UpdatesPage() {
 
         <div className="text-base leading-relaxed text-gray-800 space-y-3">
           <p>
-            <i>We</i> are building a space for <i>you</i> to share about your hopes and problems. 
-            We hope to close the loop where feedback turns into change that you can see.
+            <i>We</i> are building a space for <i>you</i> to spill your thoughts. 
+            We're doing this to make society better: to close the loop between desires and outcomes.
           </p>
           <p>
             See what's happening with your feedback on our 

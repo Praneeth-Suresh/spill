@@ -19,7 +19,8 @@ export const experimentsRouter = router({
       questionId: z.number().optional(),
     }))
     .query(async ({ input }) => {
-      return await db.getGrowthBookConfig(input.pagePath, input.questionId);
+      const config = await db.getGrowthBookConfig(input.pagePath, input.questionId);
+      return config;
     }),
   
   /**
