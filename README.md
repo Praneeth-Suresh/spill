@@ -1,39 +1,28 @@
-# Spill
+# Spill | Campus feedback prototype
 
-## Development
+Spill explores how a campus team could use facility-specific forms for text feedback, polls, and file uploads, then review results and updates. The repository documents a prototype and a local development path, not an official reporting service or a guarantee of anonymous submissions.
 
-Development and production builds run differently, as defined in `server/_core/index.ts`.During development, vite is used.
+> Use a disposable local MySQL database and fictional feedback. The response model includes IP logging and uploaded files; do not test with real feedback or contact a shared database.
 
-To allow the development build to run, set:
+## Run locally
 
-```plaintext
-NODE_ENV=development
-```
-
-in `.env`. Otherwise, set it to `production`.
-
-To run the development server, use:
+The package pins pnpm 10.4.1. From the repository root, install dependencies, copy the environment template, and open it in an editor:
 
 ```bash
-npm install -g pnpm
 pnpm install --frozen-lockfile
+cp -n .env.example .env
+```
+
+Point `DATABASE_URL` to your own empty local MySQL database. Fill in only the configuration needed for the features you intend to test; external sign-in, mail, and uploads may need separate setup. Keep real credentials out of Git.
+
+Apply the checked-in migration files to that local database and start the app:
+
+```bash
+pnpm exec drizzle-kit migrate
 pnpm dev
 ```
 
-This will:
-
-- Start the Express server on post 3000
-- Start Vite dev server with HMR (Hot Module Replacement)
-- Watch for file changes and auto-reload
-
-**Note** that `cross-env` is used to ensure that the application can process envrionment variables correctly when using Windows.
-
-> [!WARNING]
->
-> Always ensure that the database is set up before running the app. If a local MySQL database cannot be setup in the local dev environment, use the MySQL server from Railway.
-
-HTTP is used in development mode so the cookies are not secure.
-
+Open the local URL printed by the server (normally http://localhost:3000/). Express mounts Vite middleware in development, so a separate Vite command is not needed. Add the sample questions below if your database is blank.
 ## Repository Structure
 
 Here is the role played by the directories in this project:
@@ -48,7 +37,7 @@ The runtime deduces the part of the codebase required for each segment of the ap
 
 - `tsconfig` for typescript configuration. In this project, TypeScript only checks types, doesn't compile (Vite and esbuild handle compilation).
 - `drizzle.config.ts` to configure drizzle so that it can access the right database using the appropriate credentials.
-- `vite.config.ts` as vite configuration. In development, Vite runs on port 3000 (frontend) and Express runs on port 3001 (backend). The proxy forwards /api requests to the backend, avoiding CORS issues.
+- `vite.config.ts` as vite configuration. Express mounts Vite middleware in development; the same server serves the UI and API.
 - `vitest.config.ts` configures vitest which handles comprehensive tests for the application.
 
 ## Database design
@@ -86,33 +75,15 @@ To view the database through an interactive winodw, use:
 pnpm exec drizzle-kit studio
 ```
 
-To handle the hosted database, use the MySQL shell and the provided connection URL to connect to the database directly. Once inside the database, the tables can be created in one fell swoop by copy-pasting the commands in `mysql-init/0000_careful_karnak.sql`.
+### Add fictional sample data
 
-> [!WARNING]
->
-> Be sure to ensure that the `.sql` file in `mysql_init` is up to date with the database. If it needs to be updated, use drizzle but change `out` accordingly in `drizzle.config.ts`.
-
-### Seeding Data
-
-For the purposes of testing the application, we are going to use seed data. This means that we don't need to manually write in content to the database before testing the application.
-
-First, populate the information into `scripts/seed-db.ts` then run this seed script with the following command:
+Apply the migrations before running the seed script. Run it only once against an empty, disposable database:
 
 ```bash
 pnpm exec tsx scripts/seed-db.ts
 ```
 
-If this runs successfully, you should get the message `✅ Seeding complete`. Note that this command cannot be run multiple times because once data is already inserted, making any changes using the `INSERT` command will produce a duplicate entry error.
-
-To seed the database in the hosting platform, set the `DATABASE_URL` in the `.env` file to the URL of the SQL database. Then run the above command to seed the database.
-
-Note that Drizzle does not automatically create tables on seed. For this you need to run migrations. So, if you need to create tables again because the database changed, then run these commands:
-
-```bash
-pnpm exec drizzle-kit generate
-pnpm exec drizzle-kit migrate
-```
-
+The script inserts sample facilities and questions, so repeated runs can hit duplicate entries.
 ### Manual data entry for updates
 
 - `content` should use double newlines (`\n\n`) between paragraphs; each paragraph is rendered separately.
@@ -120,101 +91,15 @@ pnpm exec drizzle-kit migrate
 - Updates are ordered by the `date` column (newest first); local server time is used for “today” checks on the gated `/updates` page.
 - No schema change was needed for this repurpose, but keep values aligned to existing `questions.id` to avoid orphaned updates.
 
-## Running Tests
-
-This is how to run the test suite:
+## Build and deployment
 
 ```bash
+pnpm check
 pnpm test
-```
-
-Ensure your tests use a separate test database to avoid polluting production data.
-
-## Deployment
-
-To set up environment variables, follow the documentation for required environment variables in `.env.example`.
-
-To run the application in production, use:
-
-```bash
 pnpm build
-node dist/index.js
 ```
 
-This uses HTTPS so access the application at `https://...`. HTTPS is used because in the production environement, cookies need to be secure which is only available through HTTPS. This requires that a self-signed certificate is created and available in the root directory. If there is no self-signed certificate available, run the following command in the root directory:
-
-```bash
-openssl req -nodes -new -x509 -keyout server.key -out server.cert
-```
-
-However, note than login will not work because OAuth providers do not trust self-authorized SSL-certs. This mode is only for testing that cookies work as expected with HTTPS.
-
-### Docker
-
-A multi-stage build is used. This reduces the final image size by excluding development dependencies and build tools. The builder stage compiles the code, and the production stage only includes the compiled output and runtime dependencies.
-
-Alpine Linux is chosen because Alpine is a minimal Linux distribution (5MB vs 100MB+ for Ubuntu), resulting in smaller Docker images and faster deployments.
-
-Here is what the DockerFile does:
-
-**Build Stage**
-
-- Installs pnpm
-- Installs all dependencies
-- Builds frontend and backend with pnpm build
-
-**Runtime Stage**
-
-- Installs only production dependencies
-- Copies built artifacts (dist, drizzle)
-- Copies drizzle.config.ts (needed for Drizzle ORM)
-- Exposes port 3000
-- Healthcheck matches compose file
-- Starts app with node dist/index.js
-
-Here is how the docker compose setup can be done:
-
-```bash
-docker-compose up --build
-```
-
-If you make any changes to the codebase, then use the command:
-
-```bash
-docker-compose build --no-cache
-```
-
-to ensure that any fixes are carried through to the image.
-
-Note that the container is a **production container** so it will work **only if** the environment variable `NODE_ENV` is set to `production`. Development dependencies are not installed within the container because this increases image size.
-
-Since development dependencies are not in the container, the code is carefully crafted to ensure that none of the development dependencies (particularly `vite`) are bundled into `dist`.
-
-## Railway Hosting
-
-This app is hosted on Railway. Here are some of the key points to take note about the hosting:
-
-- The quickest way to understand the status of the hosting is through the GUI. Navigate to https://railway.app and navigate to the project.
-- The code is deployed through GitHub. This means that any change to this repo will automatically be refelcted in the applicaiton. Thus, be sure to ensure that proper testing is done before the app is pushed to the main branch (follow appropriate CI/CD practises).
-- Ensure that the envrionment variables are all correctly set. There are a few variables that change when hosted, including: `GOOGLE_OAUTH_REDIRECT_URI`.
-- Working with the database can be done in three ways:
-  - Use the GUI provided by Railway to manually manage tables (this is not recommended because it provides limited control)
-  - Use drizzle to manage the database by changing the `DATABSE_URL` envrionment variables on a local machine. Then the standard drizzle commands to update and seed the database can be used.
-  - Connect to the database from MySQL shell for full access, using the link provided by Railway.
-
-- The hosted app can also be managed using the Railway shell. These are the commands needed to set it up:ra
-
-  ```bash
-  # Install the railway CLI using npm
-  npm i -g @railway/cli
-
-  # Connect to the service that you want to work with
-  railway link
-  railway shell
-  ```
-
-- One useful command that can be used from the Railway CLI is `railway logs` to see the live logs from the Railway deployment.
-
+Keep test and development databases separate from hosted data. The [Dockerfile](Dockerfile) and [Compose configuration](docker-compose.yml) are reference material, not proof of a maintained deployment. HTTPS depends on the runtime path: the server uses HTTP in development, containers, and behind Railway, and loads local certificates for standalone production. See [the server entry point](server/_core/index.ts) before changing deployment settings.
 ## Adding questions
 
 Before creating a question, determine the following details.
@@ -263,4 +148,4 @@ The scrollable question list (with arrow key navigation) is commented out in the
 
 Here are some of the things that are in the pipeline for this project.
 
-I am looking at implementing real-time uvpdates with WebSocket connections, adding email notifications for critical issues, implementing rate limiting to prevent abuse, adding more analytics visualizations and creating a mobile app with React Native.
+I am looking at implementing real-time updates with WebSocket connections, adding email notifications for critical issues, implementing rate limiting to prevent abuse, adding more analytics visualizations and creating a mobile app with React Native.
